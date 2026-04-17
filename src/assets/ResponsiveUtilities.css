@@ -1,0 +1,27 @@
+/* ============================================
+   Responsive Utility Classes
+   Breakpoint: 768px (mobile vs desktop/tablet)
+   ============================================ */
+
+/* Hide on mobile - Show on desktop/tablet */
+.hide-on-mobile {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* Show on mobile - Hide on desktop/tablet */
+.show-on-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .show-on-mobile {
+    display: block !important;
+  }
+}
+

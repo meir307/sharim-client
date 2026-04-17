@@ -1,0 +1,612 @@
+/* RTL Direction Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Global RTL for all Vuetify components */
+[dir="rtl"] .v-btn {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+[dir="rtl"] .v-text-field {
+  text-align: right;
+}
+
+[dir="rtl"] .v-card-title {
+  text-align: right;
+}
+
+/* Force RTL for all Vuetify components when parent has RTL */
+[dir="rtl"] .v-card,
+[dir="rtl"] .v-dialog,
+[dir="rtl"] .v-form,
+[dir="rtl"] .v-text-field,
+[dir="rtl"] .v-textarea,
+[dir="rtl"] .v-select,
+[dir="rtl"] .v-btn,
+[dir="rtl"] .v-card-title,
+[dir="rtl"] .v-card-text {
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+/* RTL for form inputs */
+[dir="rtl"] .v-text-field input,
+[dir="rtl"] .v-textarea textarea {
+  text-align: right !important;
+  direction: rtl !important;
+}
+
+/* RTL for labels */
+[dir="rtl"] .v-label {
+  text-align: right !important;
+}
+
+.popup-title{
+    padding: 0;
+    margin: 0;
+    padding-right: 12px;
+    margin-bottom: 20px;
+    background-color: rgb(138, 200, 224);
+    text-align: right;
+    border-color: black;
+    border-width: 2px;
+}
+
+.popup-btn-row {
+    direction: ltr;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 16px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+
+  .sticky-header {
+    position: sticky;
+    top: 64px; /* Height of the app bar */
+    z-index: 100;
+    background-color: white;
+    padding: 16px 0;
+    border-bottom: 1px solid #e0e0e0;
+    margin: -16px -16px 16px -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  /* Add shadow when scrolled */
+  .sticky-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.1), transparent);
+  }
+
+  .modern-card {
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.modern-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px;
+}
+
+/* modern-card header row — Memunim HazardsMain / factory pattern */
+.title-container {
+  display: flex !important;
+  align-items: center !important;
+  width: 100%;
+  flex-wrap: nowrap !important;
+  flex-direction: row !important;
+  gap: 16px;
+}
+
+.title-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 !important;
+  font-size: 1.2rem !important;
+  font-weight: 100;
+  color: white;
+}
+
+.add-btn,
+.menu-btn {
+  flex-shrink: 0 !important;
+  min-width: auto;
+}
+
+.add-btn {
+  border-radius: 12px;
+  text-transform: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .title-container {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+  }
+
+  .title-text {
+    text-align: left !important;
+    margin-right: 16px !important;
+  }
+
+  .add-btn {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Card body list / empty state — Memunim HazardsMain */
+.tiles-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.no-data {
+  padding: 48px;
+  text-align: center;
+  color: #999;
+  font-size: 1.1rem;
+}
+
+.table-wrapper {
+  padding: 0;
+  background: #fafafa;
+}
+
+.modern-table {
+  background: transparent;
+}
+
+.modern-table .v-data-table__wrapper {
+  border-radius: 0;
+}
+
+.table-header {
+   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+   color: #2c3e50;
+   font-weight: 600;
+   font-size: 0.9rem;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+   padding: 16px 12px;
+   border: none;
+   width: 120px;
+}
+
+.table-header:first-child {
+   width: 100px;
+}
+
+.table-header:nth-child(2) {
+   width: 200px;
+}
+
+.table-header:nth-child(3) {
+   width: 250px;
+}
+
+.table-header:nth-child(4) {
+   width: 150px;
+}
+
+.table-header:last-child {
+   width: 120px;
+}
+
+.actions-header {
+  text-align: center;
+}
+
+.table-row {
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #e8eaf6;
+}
+
+.table-row:hover {
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.table-cell {
+   padding: 16px 12px;
+   vertical-align: middle;
+   border: none;
+   width: 120px;
+}
+
+.table-cell:first-child {
+   width: 100px;
+}
+
+.table-cell:nth-child(2) {
+   width: 200px;
+}
+
+.table-cell:nth-child(3) {
+   width: 250px;
+}
+
+.table-cell:nth-child(4) {
+   width: 150px;
+}
+
+.table-cell:last-child {
+   width: 120px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.user-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.committee-checkbox {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.committee-checkbox .v-selection-control {
+  min-height: auto;
+}
+
+.committee-checkbox .v-selection-control__wrapper {
+  margin: 0;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.action-btn {
+  margin: 0 4px;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.action-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dialog checkbox styling */
+.v-dialog .v-checkbox {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.v-dialog .v-checkbox .v-selection-control {
+  flex-direction: row-reverse;
+}
+
+.v-dialog .v-checkbox .v-label {
+  margin-right: 8px;
+  margin-left: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .modern-title {
+      padding: 16px;
+      font-size: 1.2rem;
+  }
+
+  .table-wrapper {
+      overflow-x: auto;
+  }
+
+  .modern-table {
+      min-width: 600px;
+  }
+
+  .table-header {
+      padding: 12px 8px;
+      font-size: 0.8rem;
+      width: 80px;
+  }
+
+  .table-header:first-child {
+      width: 180px;
+  }
+
+  .table-header:nth-child(2) {
+      width: 150px;
+  }
+
+  .table-header:nth-child(3) {
+      width: 180px;
+  }
+
+  .table-header:nth-child(4) {
+      width: 120px;
+  }
+
+  .table-header:last-child {
+      width: 80px;
+  }
+
+  .table-cell {
+      padding: 12px 8px;
+      width: 80px;
+      font-size: 0.85rem;
+  }
+
+  .table-cell:first-child {
+      width: 80px;
+  }
+
+  .table-cell:nth-child(2) {
+      width: 150px;
+  }
+
+  .table-cell:nth-child(3) {
+      width: 180px;
+  }
+
+  .table-cell:nth-child(4) {
+      width: 120px;
+  }
+
+  .table-cell:last-child {
+      width: 80px;
+  }
+
+  .user-info {
+      gap: 8px;
+  }
+
+  .user-avatar {
+      width: 28px;
+      height: 28px;
+      font-size: 0.8rem;
+  }
+
+  .user-name {
+      font-size: 0.85rem;
+  }
+
+  .action-btn {
+      margin: 0 2px;
+      padding: 4px;
+  }
+
+  .action-btn .v-icon {
+      font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modern-title {
+      padding: 12px;
+  }
+
+  .title-text {
+      font-size: 0.9rem;
+  }
+
+  .table-header {
+      padding: 8px 4px;
+      font-size: 0.75rem;
+      width: 60px;
+  }
+
+  .table-header:first-child {
+      width: 60px;
+  }
+
+  .table-header:nth-child(2) {
+      width: 120px;
+  }
+
+  .table-header:nth-child(3) {
+      width: 140px;
+  }
+
+  .table-header:nth-child(4) {
+      width: 100px;
+  }
+
+  .table-header:last-child {
+      width: 60px;
+  }
+
+  .table-cell {
+      padding: 8px 4px;
+      width: 60px;
+      font-size: 0.8rem;
+  }
+
+  .table-cell:first-child {
+      width: 60px;
+  }
+
+  .table-cell:nth-child(2) {
+      width: 120px;
+  }
+
+  .table-cell:nth-child(3) {
+      width: 140px;
+  }
+
+  .table-cell:nth-child(4) {
+      width: 100px;
+  }
+
+  .table-cell:last-child {
+      width: 60px;
+  }
+
+  .user-avatar {
+      width: 24px;
+      height: 24px;
+      font-size: 0.7rem;
+  }
+
+  .user-name {
+      font-size: 0.8rem;
+  }
+
+  .action-btn {
+      margin: 0 1px;
+      padding: 2px;
+  }
+
+  .action-btn .v-icon {
+      font-size: 14px;
+  }
+}
+
+/* Data Table Global Styles */
+
+/* Table Border Radius */
+.v-data-table {
+  border-radius: 8px;
+}
+
+.v-data-table__wrapper {
+  border-radius: 8px;
+}
+
+/* Header Styling */
+.v-data-table-header {
+  background-color: #f5f5f5;
+}
+
+.v-data-table-header th {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Row Hover Effect */
+.v-data-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Action Button Styling */
+.action-btn {
+  margin: 0 2px;
+}
+
+/* Table Wrapper */
+.table-wrapper {
+  width: 100%;
+}
+
+/* Responsive Table Wrapper */
+@media (max-width: 768px) {
+  .table-wrapper {
+    width: 100%;
+  }
+}
+
+/* Procedure Link Styling */
+.procedure-link {
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.procedure-link:hover {
+  text-decoration: underline;
+}
+
+/* Phone number input - digits only */
+.phone-input input {
+  text-align: right;
+}
+
+.phone-input input::-webkit-outer-spin-button,
+.phone-input input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.phone-input input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Select with button - for adding items next to select fields */
+.select-with-button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  direction: rtl;
+}
+
+.select-field {
+  flex: 1;
+}
+
+.select-button {
+  margin-top: 2px;
+  background-color: #4caf50 !important;
+  color: white !important;
+  font-weight: bold;
+}
+
+.select-button .v-icon {
+  color: white !important;
+  font-weight: bold;
+  font-size: 28px !important;
+}
+
+.select-button:hover {
+  background-color: #45a049 !important;
+  transform: scale(1.1);
+}
+
+/* App bar tabs — from Memunim TopStrip.vue */
+.top-strip .v-tab {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.top-strip .v-tab--selected {
+  color: white !important;
+  font-weight: bold;
+}
+
+.top-strip .v-tab .v-btn__content {
+  color: inherit;
+}
