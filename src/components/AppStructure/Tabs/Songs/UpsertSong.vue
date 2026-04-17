@@ -150,8 +150,8 @@ async function saveSong() {
 
   if (!isValid) {
     alert('יש למלא את כל השדות הנדרשים')
-    return;
-  }//test dfd
+    return
+  }
 
   const parsedCords = parseCordsJson()
   if (!parsedCords) return
