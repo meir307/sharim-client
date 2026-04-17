@@ -1,13 +1,27 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
 import UpsertCategory from './UpsertCategory.vue'
 import UpsertArtist from './UpsertArtist.vue'
 
 const userStore = useUserStore()
+const display = useDisplay()
+
+/** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
+const NAV_DRAWER_BREAKPOINT = 960
 
 const activeTab = ref('songs')
+const navDrawerOpen = ref(false)
+
+const showNavInDrawer = computed(() => (display.width?.value ?? 0) < NAV_DRAWER_BREAKPOINT)
+
+watch(activeTab, () => {
+  if (showNavInDrawer.value) {
+    navDrawerOpen.value = false
+  }
+})
 const showUpsertDialog = ref(false)
 const selectedSong = ref(null)
 const songs = ref([])
@@ -128,9 +142,34 @@ function onSongSaved(savedSong) {
 
 <template>
   <div class="songs-main">
+    <v-navigation-drawer
+      v-if="showNavInDrawer"
+      v-model="navDrawerOpen"
+      temporary
+      location="start"
+      width="260"
+      class="songs-main__nav-drawer"
+    >
+      <v-card class="navigation-card songs-main__nav-drawer-card" elevation="0" variant="flat">
+        <v-tabs
+          v-model="activeTab"
+          direction="vertical"
+          class="songs-main__tabs"
+          bg-color="transparent"
+          color="primary"
+          slider-color="primary"
+          density="comfortable"
+        >
+          <v-tab value="songs" prepend-icon="mdi-music-note" text="שירים" class="text-none" />
+          <v-tab value="categories" prepend-icon="mdi-shape" text="קטגוריות" class="text-none" />
+          <v-tab value="artists" prepend-icon="mdi-account-music" text="אמנים" class="text-none" />
+        </v-tabs>
+      </v-card>
+    </v-navigation-drawer>
+
     <!-- Memunim FactoryMain: navigation (first in DOM → visual right in RTL) | content (left) -->
     <div class="content-wrapper">
-      <aside class="navigation-menu">
+      <aside class="navigation-menu d-none d-md-block">
         <v-card class="navigation-card" elevation="0" variant="flat">
           <v-tabs
             v-model="activeTab"
@@ -153,6 +192,15 @@ function onSongSaved(savedSong) {
           <!-- HazardsMain-style header inside content (like Memunim screenshot) -->
           <v-card-title class="modern-title songs-main__card-title">
             <div class="title-container">
+              <v-btn
+                v-if="showNavInDrawer"
+                class="songs-main__nav-open"
+                icon="mdi-menu"
+                variant="text"
+                density="comfortable"
+                aria-label="תפריט ניווט"
+                @click="navDrawerOpen = true"
+              />
               <h2 class="title-text">{{ activeTitle }}</h2>
               <v-spacer />
               <div class="songs-main__header-actions">
@@ -420,6 +468,10 @@ function onSongSaved(savedSong) {
   align-items: center;
 }
 
+.songs-main__nav-open {
+  flex-shrink: 0;
+}
+
 .songs-main__header-actions {
   display: flex;
   align-items: center;
@@ -453,19 +505,29 @@ function onSongSaved(savedSong) {
 
 @media (max-width: 960px) {
   .content-wrapper {
-    flex-direction: column;
+    flex-direction: row;
     max-height: none;
     min-height: auto;
   }
 
   .navigation-menu {
-    width: 100%;
-    position: relative;
+    display: none !important;
   }
 
   .content-area {
     overflow-y: visible;
   }
+}
+
+.songs-main__nav-drawer-card {
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.songs-main__nav-drawer :deep(.v-navigation-drawer__content) {
+  display: flex;
+  flex-direction: column;
 }
 
 .songs-main__song-item + .songs-main__song-item {
