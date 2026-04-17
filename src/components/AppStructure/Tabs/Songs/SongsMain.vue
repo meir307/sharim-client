@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
 import UpsertCategory from './UpsertCategory.vue'
+import UpsertArtist from './UpsertArtist.vue'
 
 const userStore = useUserStore()
 
@@ -14,21 +15,28 @@ const songs = ref([])
 const showCategoryDialog = ref(false)
 const selectedCategory = ref(null)
 
+const showArtistDialog = ref(false)
+const selectedArtist = ref(null)
+
 const categories = computed(() => {
   return Array.isArray(userStore.user?.categories) ? userStore.user.categories : []
 })
 
-/** Fixed width for category name column (px) — keep in sync with styles below */
-const categoryNameColPx = 160
+const artists = computed(() => {
+  return Array.isArray(userStore.user?.artists) ? userStore.user.artists : []
+})
 
-const categoryTableHeaders = [
+/** Fixed width for name column in categories / artists tables (px) — sync with scoped CSS */
+const entityNameColPx = 160
+
+const entityTableHeaders = [
   {
     title: 'שם',
     key: 'name',
     sortable: true,
-    width: categoryNameColPx,
-    minWidth: categoryNameColPx,
-    maxWidth: categoryNameColPx,
+    width: entityNameColPx,
+    minWidth: entityNameColPx,
+    maxWidth: entityNameColPx,
     nowrap: true,
   },
   { title: 'פעולות', key: 'actions', sortable: false, align: 'end', minWidth: 96 },
@@ -74,7 +82,29 @@ function onCloseCategoryDialog() {
 }
 
 function onAddArtist() {
-  // TODO: open UpsertArtist dialog
+  selectedArtist.value = null
+  showArtistDialog.value = true
+}
+
+function onEditArtist(artist) {
+  selectedArtist.value = artist
+  showArtistDialog.value = true
+}
+
+async function onDeleteArtist(artist) {
+  const name = artist?.name ?? ''
+  if (!window.confirm(`למחוק את האמן "${name}"?`)) {
+    return
+  }
+  try {
+    await userStore.deleteArtist(artist.id)
+  } catch {
+    // errors surfaced in store
+  }
+}
+
+function onCloseArtistDialog() {
+  showArtistDialog.value = false
 }
 
 function onEditSong(song) {
@@ -184,13 +214,13 @@ function onSongSaved(savedSong) {
               </v-tabs-window-item>
               <v-tabs-window-item value="categories">
                 <div
-                  class="tiles-container songs-main__categories-wrap"
-                  :style="{ '--category-name-col': `${categoryNameColPx}px` }"
+                  class="tiles-container songs-main__entity-wrap"
+                  :style="{ '--entity-name-col': `${entityNameColPx}px` }"
                 >
-                  <div class="songs-main__categories-narrow">
+                  <div class="songs-main__entity-narrow">
                     <v-data-table
-                      class="songs-main__categories-table"
-                      :headers="categoryTableHeaders"
+                      class="songs-main__entity-table"
+                      :headers="entityTableHeaders"
                       :items="categories"
                       item-value="id"
                       density="comfortable"
@@ -198,12 +228,12 @@ function onSongSaved(savedSong) {
                     >
                       <template #colgroup>
                         <colgroup>
-                          <col class="songs-main__category-col-name" />
+                          <col class="songs-main__entity-col-name" />
                           <col />
                         </colgroup>
                       </template>
                       <template #item.actions="{ item }">
-                        <div class="songs-main__category-actions">
+                        <div class="songs-main__entity-actions">
                           <v-btn
                             icon="mdi-pencil"
                             size="small"
@@ -230,8 +260,50 @@ function onSongSaved(savedSong) {
                 </div>
               </v-tabs-window-item>
               <v-tabs-window-item value="artists">
-                <div class="tiles-container">
-                  <div class="no-data">כאן תוצג רשימת האמנים.</div>
+                <div
+                  class="tiles-container songs-main__entity-wrap"
+                  :style="{ '--entity-name-col': `${entityNameColPx}px` }"
+                >
+                  <div class="songs-main__entity-narrow">
+                    <v-data-table
+                      class="songs-main__entity-table"
+                      :headers="entityTableHeaders"
+                      :items="artists"
+                      item-value="id"
+                      density="comfortable"
+                      hide-default-footer
+                    >
+                      <template #colgroup>
+                        <colgroup>
+                          <col class="songs-main__entity-col-name" />
+                          <col />
+                        </colgroup>
+                      </template>
+                      <template #item.actions="{ item }">
+                        <div class="songs-main__entity-actions">
+                          <v-btn
+                            icon="mdi-pencil"
+                            size="small"
+                            variant="text"
+                            color="primary"
+                            aria-label="ערוך אמן"
+                            @click="onEditArtist(item)"
+                          />
+                          <v-btn
+                            icon="mdi-delete"
+                            size="small"
+                            variant="text"
+                            color="error"
+                            aria-label="מחק אמן"
+                            @click="onDeleteArtist(item)"
+                          />
+                        </div>
+                      </template>
+                      <template #no-data>
+                        <div class="no-data pa-6">אין אמנים. לחץ על &quot;הוסף אמן&quot;.</div>
+                      </template>
+                    </v-data-table>
+                  </div>
                 </div>
               </v-tabs-window-item>
             </v-tabs-window>
@@ -255,6 +327,15 @@ function onSongSaved(savedSong) {
         :edit-category="selectedCategory"
         @close-dialog="onCloseCategoryDialog"
         @saved="onCloseCategoryDialog"
+      />
+    </v-dialog>
+
+    <v-dialog v-model="showArtistDialog" max-width="640" width="90%" persistent>
+      <UpsertArtist
+        :show-dialog="showArtistDialog"
+        :edit-artist="selectedArtist"
+        @close-dialog="onCloseArtistDialog"
+        @saved="onCloseArtistDialog"
       />
     </v-dialog>
   </div>
@@ -391,7 +472,7 @@ function onSongSaved(savedSong) {
   margin-top: 8px;
 }
 
-.songs-main__category-actions {
+.songs-main__entity-actions {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -401,13 +482,13 @@ function onSongSaved(savedSong) {
   white-space: nowrap;
 }
 
-.songs-main__categories-wrap {
+.songs-main__entity-wrap {
   width: 100%;
   min-width: 0;
 }
 
-/* Centered narrow strip for the categories table */
-.songs-main__categories-narrow {
+/* Narrow strip for categories / artists tables (aligned end in LTR coordinates) */
+.songs-main__entity-narrow {
   width: 100%;
   max-width: 480px;
   margin-left: auto;
@@ -418,16 +499,16 @@ function onSongSaved(savedSong) {
   overflow: hidden;
 }
 
-.songs-main__categories-table :deep(col.songs-main__category-col-name) {
-  width: var(--category-name-col, 160px);
+.songs-main__entity-table :deep(col.songs-main__entity-col-name) {
+  width: var(--entity-name-col, 160px);
 }
 
 /* Lock first column — Vuetify can still widen cells without this */
-.songs-main__categories-wrap :deep(thead th:first-child),
-.songs-main__categories-wrap :deep(tbody td:first-child) {
-  width: var(--category-name-col, 160px);
-  min-width: var(--category-name-col, 160px);
-  max-width: var(--category-name-col, 160px);
+.songs-main__entity-wrap :deep(thead th:first-child),
+.songs-main__entity-wrap :deep(tbody td:first-child) {
+  width: var(--entity-name-col, 160px);
+  min-width: var(--entity-name-col, 160px);
+  max-width: var(--entity-name-col, 160px);
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;

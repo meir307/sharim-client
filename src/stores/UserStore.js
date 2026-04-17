@@ -2,9 +2,9 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useLoaderStore } from './LoaderStore'
 
-/** Next 1-based sequential id from existing category ids (numeric only). */
-function nextCategorySequentialId(categories) {
-  const list = Array.isArray(categories) ? categories : []
+/** Next 1-based sequential id from existing `{ id }` rows (numeric only). */
+function nextSequentialId(items) {
+  const list = Array.isArray(items) ? items : []
   const nums = list
     .map((c) => Number(c?.id))
     .filter((n) => Number.isInteger(n) && n >= 1)
@@ -20,8 +20,9 @@ export const useUserStore = defineStore('UserStore', {
       const stored = localStorage.getItem('user')
       if (!stored || stored === 'undefined') return {}
       const user = JSON.parse(stored)
-      if (user && typeof user === 'object' && !Array.isArray(user.categories)) {
-        user.categories = []
+      if (user && typeof user === 'object') {
+        if (!Array.isArray(user.categories)) user.categories = []
+        if (!Array.isArray(user.artists)) user.artists = []
       }
       return user
     })(),
@@ -41,6 +42,9 @@ export const useUserStore = defineStore('UserStore', {
         if (!Array.isArray(this.user.categories)) {
           this.user.categories = []
         }
+        if (!Array.isArray(this.user.artists)) {
+          this.user.artists = []
+        }
         localStorage.setItem('user', JSON.stringify(this.user))
       } catch (error) {
         const message = error.response?.data?.message ?? error.message
@@ -59,6 +63,9 @@ export const useUserStore = defineStore('UserStore', {
         this.user = response.data.user
         if (!Array.isArray(this.user.categories)) {
           this.user.categories = []
+        }
+        if (!Array.isArray(this.user.artists)) {
+          this.user.artists = []
         }
         localStorage.setItem('user', JSON.stringify(this.user))
         alert('הרשמה בוצעה בהצלחה.')
@@ -149,7 +156,7 @@ export const useUserStore = defineStore('UserStore', {
           next.push(saved)
         }
       } else {
-        const newId = nextCategorySequentialId(prev)
+        const newId = nextSequentialId(prev)
         saved = { id: newId, name: trimmed }
         next.push(saved)
       }
@@ -171,6 +178,106 @@ export const useUserStore = defineStore('UserStore', {
         return false
       }
       await this._saveCategoriesList(next)
+      return true
+    },
+
+    /**
+     * POST full artist list to `user/SaveArtists` and merge response into `user` + localStorage.
+     * @param {Array<{ id: number|string, name: string }>} next
+     */
+    async _saveArtistsList(next) {
+      this.preAction()
+      try {
+        const response = await axios.post(
+          this.apiUrl + 'user/SaveArtists',
+          { artists: next },
+          {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          },
+        )
+
+        const resUser = response.data?.user
+        const resArtists = response.data?.artists
+        if (resUser && typeof resUser === 'object') {
+          this.user = {
+            ...this.user,
+            ...resUser,
+            artists: Array.isArray(resArtists)
+              ? resArtists
+              : Array.isArray(resUser.artists)
+                ? resUser.artists
+                : next,
+          }
+        } else if (Array.isArray(resArtists)) {
+          this.user = { ...this.user, artists: resArtists }
+        } else {
+          this.user = { ...this.user, artists: next }
+        }
+
+        if (!Array.isArray(this.user.artists)) {
+          this.user.artists = []
+        }
+
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return response
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        this.postAction()
+      }
+    },
+
+    /**
+     * Add or update an artist, POST full list to `user/SaveArtists`, then sync `user` + localStorage.
+     * @param {{ id?: number|string|null, name: string }} payload
+     * @returns {Promise<{ id: number|string, name: string } | null>}
+     */
+    async upsertArtist(payload) {
+      const trimmed = String(payload?.name ?? '').trim()
+      if (!trimmed) {
+        return null
+      }
+
+      const prev = Array.isArray(this.user.artists) ? [...this.user.artists] : []
+      let saved
+      const next = [...prev]
+
+      if (payload.id != null && payload.id !== '') {
+        const idx = next.findIndex((a) => String(a.id) === String(payload.id))
+        saved = { id: payload.id, name: trimmed }
+        if (idx >= 0) {
+          next[idx] = saved
+        } else {
+          next.push(saved)
+        }
+      } else {
+        const newId = nextSequentialId(prev)
+        saved = { id: newId, name: trimmed }
+        next.push(saved)
+      }
+
+      await this._saveArtistsList(next)
+      const merged = this.user.artists
+      return merged.find((a) => String(a.id) === String(saved.id)) ?? saved
+    },
+
+    /**
+     * Remove an artist by id and sync the remaining list to the server.
+     * @param {number|string} artistId
+     * @returns {Promise<boolean>}
+     */
+    async deleteArtist(artistId) {
+      const prev = Array.isArray(this.user.artists) ? [...this.user.artists] : []
+      const next = prev.filter((a) => String(a.id) !== String(artistId))
+      if (next.length === prev.length) {
+        return false
+      }
+      await this._saveArtistsList(next)
       return true
     },
 
