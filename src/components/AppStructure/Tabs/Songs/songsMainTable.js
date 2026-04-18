@@ -17,6 +17,24 @@ function categoryNameForSong(song, catList) {
   return String(v).trim()
 }
 
+/** Song is tied to this category if `song.category` is its id or its name (same as list / save resolution). */
+function songUsesCategory(song, category) {
+  const idStr = category?.id != null ? String(category.id).trim() : ''
+  const catName = category?.name != null ? String(category.name).trim() : ''
+  const v = song?.category
+  if (v == null || v === '') return false
+  const s = String(v).trim()
+  if (s === '') return false
+  if (idStr !== '' && s === idStr) return true
+  if (catName !== '' && s === catName) return true
+  return false
+}
+
+function songsUsingCategory(userStore, category) {
+  const songs = Array.isArray(userStore.songs) ? userStore.songs : []
+  return songs.filter((song) => songUsesCategory(song, category))
+}
+
 function artistNameForSong(song, artList) {
   const v = song?.artist
   if (v == null || v === '') return ''
@@ -25,6 +43,24 @@ function artistNameForSong(song, artList) {
     return a?.name != null ? String(a.name).trim() : String(v)
   }
   return String(v).trim()
+}
+
+/** Song is tied to this artist if `song.artist` is its id or its name (same as list / save resolution). */
+function songUsesArtist(song, artist) {
+  const idStr = artist?.id != null ? String(artist.id).trim() : ''
+  const artName = artist?.name != null ? String(artist.name).trim() : ''
+  const v = song?.artist
+  if (v == null || v === '') return false
+  const s = String(v).trim()
+  if (s === '') return false
+  if (idStr !== '' && s === idStr) return true
+  if (artName !== '' && s === artName) return true
+  return false
+}
+
+function songsUsingArtist(userStore, artist) {
+  const songs = Array.isArray(userStore.songs) ? userStore.songs : []
+  return songs.filter((song) => songUsesArtist(song, artist))
 }
 
 /** External URL for the song name cell (supports common API casings). */
@@ -92,6 +128,13 @@ export function useSongsMainActiveTitle(activeTab) {
 }
 
 export function runDeleteCategoryConfirmed(userStore, category) {
+  const using = songsUsingCategory(userStore, category)
+  if (using.length > 0) {
+    const n = using.length
+    const songPhrase = n === 1 ? 'שיר אחד' : `${n} שירים`
+    window.alert(`לא ניתן למחוק: הקטגוריה בשימוש ב־${songPhrase}.`)
+    return
+  }
   const name = category?.name ?? ''
   if (!window.confirm(`למחוק את הקטגוריה "${name}"?`)) {
     return
@@ -102,6 +145,13 @@ export function runDeleteCategoryConfirmed(userStore, category) {
 }
 
 export function runDeleteArtistConfirmed(userStore, artist) {
+  const using = songsUsingArtist(userStore, artist)
+  if (using.length > 0) {
+    const n = using.length
+    const songPhrase = n === 1 ? 'שיר אחד' : `${n} שירים`
+    window.alert(`לא ניתן למחוק: האמן בשימוש ב־${songPhrase}.`)
+    return
+  }
   const name = artist?.name ?? ''
   if (!window.confirm(`למחוק את האמן "${name}"?`)) {
     return
