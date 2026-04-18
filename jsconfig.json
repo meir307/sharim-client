@@ -3,8 +3,20 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "strict": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false
   },
-  "include": ["src/**/*.js", "src/**/*.vue", "src/env.d.ts"],
+  "vueCompilerOptions": {
+    "target": 3.5
+  },
+  "include": ["src/**/*.js", "src/**/*.vue"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
 import UpsertCategory from './UpsertCategory.vue'
 import UpsertArtist from './UpsertArtist.vue'
+import { useSongsMainList, useSongsMainActiveTitle, runDeleteCategoryConfirmed, runDeleteArtistConfirmed } from './songsMainTable.js'
 
 const userStore = useUserStore()
 const display = useDisplay()
@@ -15,7 +16,7 @@ const NAV_DRAWER_BREAKPOINT = 960
 const activeTab = ref('songs')
 const navDrawerOpen = ref(false)
 
-const showNavInDrawer = computed(() => (display.width?.value ?? 0) < NAV_DRAWER_BREAKPOINT)
+const showNavInDrawer = computed(() => NAV_DRAWER_BREAKPOINT > (display.width?.value ?? 0))
 
 watch(activeTab, () => {
   if (showNavInDrawer.value) {
@@ -63,85 +64,6 @@ const songTableHeaders = [
   { title: 'פעולות', key: 'actions', sortable: false, align: 'end', width: 96, minWidth: 96 },
 ]
 
-function looksLikeNumericId(value) {
-  if (value == null || value === '') return false
-  if (typeof value === 'number' && Number.isFinite(value)) return true
-  const s = String(value).trim()
-  return s !== '' && /^\d+$/.test(s)
-}
-
-function categoryNameForSong(song, catList) {
-  const v = song?.category
-  if (v == null || v === '') return ''
-  if (looksLikeNumericId(v)) {
-    const c = catList.find((x) => String(x?.id) === String(v).trim())
-    return c?.name != null ? String(c.name).trim() : String(v)
-  }
-  return String(v).trim()
-}
-
-function artistNameForSong(song, artList) {
-  const v = song?.artist
-  if (v == null || v === '') return ''
-  if (looksLikeNumericId(v)) {
-    const a = artList.find((x) => String(x?.id) === String(v).trim())
-    return a?.name != null ? String(a.name).trim() : String(v)
-  }
-  return String(v).trim()
-}
-
-/** External URL for the song name cell (supports common API casings). */
-function songListUrl(row) {
-  if (!row || typeof row !== 'object') return ''
-  const keys = ['url', 'Url', 'link', 'Link', 'songUrl', 'SongUrl']
-  for (const k of keys) {
-    if (!(k in row)) continue
-    const v = row[k]
-    if (v != null && String(v).trim() !== '') {
-      return String(v).trim()
-    }
-  }
-  return ''
-}
-
-function songRowForTable(s, catList, artList) {
-  const linkUrl = songListUrl(s)
-  const row = Object.assign({}, s)
-  row.categoryName = categoryNameForSong(s, catList)
-  row.artistName = artistNameForSong(s, artList)
-  row.linkUrl = linkUrl
-  return row
-}
-
-const songsForTable = computed(() => {
-  const catList = categories.value
-  const artList = artists.value
-  return userStore.songs.map((s) => songRowForTable(s, catList, artList))
-})
-
-async function loadSongs() {
-  songsLoading.value = true
-  try {
-    await userStore.fetchSongs()
-  } catch {
-    // `fetchSongs` clears `userStore.songs` on failure
-  } finally {
-    songsLoading.value = false
-  }
-}
-
-onMounted(() => {
-  loadSongs()
-})
-
-const tabTitles = {
-  songs: 'שירים',
-  categories: 'קטגוריות',
-  artists: 'אמנים',
-}
-
-const activeTitle = computed(() => tabTitles[activeTab.value] ?? 'שירים')
-
 function onAddSong() {
   selectedSong.value = null
   showUpsertDialog.value = true
@@ -157,16 +79,8 @@ function onEditCategory(category) {
   showCategoryDialog.value = true
 }
 
-async function onDeleteCategory(category) {
-  const name = category?.name ?? ''
-  if (!window.confirm(`למחוק את הקטגוריה "${name}"?`)) {
-    return
-  }
-  try {
-    await userStore.deleteCategory(category.id)
-  } catch {
-    // errors surfaced in store
-  }
+function onDeleteCategory(category) {
+  runDeleteCategoryConfirmed(userStore, category)
 }
 
 function onCloseCategoryDialog() {
@@ -183,16 +97,8 @@ function onEditArtist(artist) {
   showArtistDialog.value = true
 }
 
-async function onDeleteArtist(artist) {
-  const name = artist?.name ?? ''
-  if (!window.confirm(`למחוק את האמן "${name}"?`)) {
-    return
-  }
-  try {
-    await userStore.deleteArtist(artist.id)
-  } catch {
-    // errors surfaced in store
-  }
+function onDeleteArtist(artist) {
+  runDeleteArtistConfirmed(userStore, artist)
 }
 
 function onCloseArtistDialog() {
@@ -213,8 +119,11 @@ function openNavDrawer() {
   navDrawerOpen.value = true
 }
 
+const songsList = useSongsMainList(userStore, categories, artists, songsLoading);
+const activeTitle = useSongsMainActiveTitle(activeTab);
+
 async function onSongSaved() {
-  await loadSongs()
+  await songsList.loadSongs()
 }
 </script>
 
@@ -311,7 +220,7 @@ async function onSongSaved() {
                     <v-data-table
                       class="songs-main__songs-table"
                       :headers="songTableHeaders"
-                      :items="songsForTable"
+                      :items="songsList.songTableItems"
                       :loading="songsLoading"
                       item-value="id"
                       density="comfortable"
