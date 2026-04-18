@@ -59,6 +59,15 @@ const isUpdateMode = computed(() => form.id != null && form.id !== '')
 
 const requiredRule = (value) => (!!value && String(value).trim().length > 0) || 'שדה חובה'
 
+function isDuplicateArtistName(trimmed) {
+  const list = Array.isArray(userStore.user?.artists) ? userStore.user.artists : []
+  return list.some((a) => {
+    if (String(a.name ?? '').trim() !== trimmed) return false
+    if (!isUpdateMode.value) return true
+    return String(a.id) !== String(form.id)
+  })
+}
+
 function applyArtistToForm(artist) {
   form.id = artist?.id ?? null
   form.name = artist?.name ?? ''
@@ -83,11 +92,17 @@ async function saveArtist() {
     return
   }
 
+  const trimmed = form.name.trim()
+  if (isDuplicateArtistName(trimmed)) {
+    alert('אמן זה כבר קיים')
+    return
+  }
+
   isSaving.value = true
   try {
     const saved = await userStore.upsertArtist({
       id: isUpdateMode.value ? form.id : null,
-      name: form.name.trim(),
+      name: trimmed,
     })
     if (!saved) return
     emit('saved', saved)

@@ -59,6 +59,15 @@ const isUpdateMode = computed(() => form.id != null && form.id !== '')
 
 const requiredRule = (value) => (!!value && String(value).trim().length > 0) || 'שדה חובה'
 
+function isDuplicateCategoryName(trimmed) {
+  const cats = Array.isArray(userStore.user?.categories) ? userStore.user.categories : []
+  return cats.some((c) => {
+    if (String(c.name ?? '').trim() !== trimmed) return false
+    if (!isUpdateMode.value) return true
+    return String(c.id) !== String(form.id)
+  })
+}
+
 function applyCategoryToForm(category) {
   form.id = category?.id ?? null
   form.name = category?.name ?? ''
@@ -83,11 +92,17 @@ async function saveCategory() {
     return
   }
 
+  const trimmed = form.name.trim()
+  if (isDuplicateCategoryName(trimmed)) {
+    alert('קטגוריה זו כבר קיימת')
+    return
+  }
+
   isSaving.value = true
   try {
     const saved = await userStore.upsertCategory({
       id: isUpdateMode.value ? form.id : null,
-      name: form.name.trim(),
+      name: trimmed,
     })
     if (!saved) return
     emit('saved', saved)

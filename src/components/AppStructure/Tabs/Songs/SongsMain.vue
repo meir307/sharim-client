@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
@@ -24,7 +24,7 @@ watch(activeTab, () => {
 })
 const showUpsertDialog = ref(false)
 const selectedSong = ref(null)
-const songs = ref([])
+const songsLoading = ref(false)
 
 const showCategoryDialog = ref(false)
 const selectedCategory = ref(null)
@@ -55,6 +55,84 @@ const entityTableHeaders = [
   },
   { title: 'פעולות', key: 'actions', sortable: false, align: 'end', minWidth: 96 },
 ]
+
+const songTableHeaders = [
+  { title: 'שם', key: 'name', sortable: true, minWidth: 140 },
+  { title: 'קטגוריה', key: 'categoryName', sortable: true, minWidth: 120 },
+  { title: 'אמן', key: 'artistName', sortable: true, minWidth: 120 },
+  { title: 'פעולות', key: 'actions', sortable: false, align: 'end', width: 96, minWidth: 96 },
+]
+
+function looksLikeNumericId(value) {
+  if (value == null || value === '') return false
+  if (typeof value === 'number' && Number.isFinite(value)) return true
+  const s = String(value).trim()
+  return s !== '' && /^\d+$/.test(s)
+}
+
+function categoryNameForSong(song, catList) {
+  const v = song?.category
+  if (v == null || v === '') return ''
+  if (looksLikeNumericId(v)) {
+    const c = catList.find((x) => String(x?.id) === String(v).trim())
+    return c?.name != null ? String(c.name).trim() : String(v)
+  }
+  return String(v).trim()
+}
+
+function artistNameForSong(song, artList) {
+  const v = song?.artist
+  if (v == null || v === '') return ''
+  if (looksLikeNumericId(v)) {
+    const a = artList.find((x) => String(x?.id) === String(v).trim())
+    return a?.name != null ? String(a.name).trim() : String(v)
+  }
+  return String(v).trim()
+}
+
+/** External URL for the song name cell (supports common API casings). */
+function songListUrl(row) {
+  if (!row || typeof row !== 'object') return ''
+  const keys = ['url', 'Url', 'link', 'Link', 'songUrl', 'SongUrl']
+  for (const k of keys) {
+    if (!(k in row)) continue
+    const v = row[k]
+    if (v != null && String(v).trim() !== '') {
+      return String(v).trim()
+    }
+  }
+  return ''
+}
+
+function songRowForTable(s, catList, artList) {
+  const linkUrl = songListUrl(s)
+  const row = Object.assign({}, s)
+  row.categoryName = categoryNameForSong(s, catList)
+  row.artistName = artistNameForSong(s, artList)
+  row.linkUrl = linkUrl
+  return row
+}
+
+const songsForTable = computed(() => {
+  const catList = categories.value
+  const artList = artists.value
+  return userStore.songs.map((s) => songRowForTable(s, catList, artList))
+})
+
+async function loadSongs() {
+  songsLoading.value = true
+  try {
+    await userStore.fetchSongs()
+  } catch {
+    // `fetchSongs` clears `userStore.songs` on failure
+  } finally {
+    songsLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadSongs()
+})
 
 const tabTitles = {
   songs: 'שירים',
@@ -128,15 +206,15 @@ function onEditSong(song) {
 
 function onCloseDialog() {
   showUpsertDialog.value = false
+  selectedSong.value = null
 }
 
-function onSongSaved(savedSong) {
-  const index = songs.value.findIndex((song) => song.id === savedSong.id)
-  if (index >= 0) {
-    songs.value[index] = { ...songs.value[index], ...savedSong }
-    return
-  }
-  songs.value.unshift(savedSong)
+function openNavDrawer() {
+  navDrawerOpen.value = true
+}
+
+async function onSongSaved() {
+  await loadSongs()
 }
 </script>
 
@@ -167,7 +245,6 @@ function onSongSaved(savedSong) {
       </v-card>
     </v-navigation-drawer>
 
-    <!-- Memunim FactoryMain: navigation (first in DOM → visual right in RTL) | content (left) -->
     <div class="content-wrapper">
       <aside class="navigation-menu d-none d-md-block">
         <v-card class="navigation-card" elevation="0" variant="flat">
@@ -189,7 +266,6 @@ function onSongSaved(savedSong) {
 
       <div class="content-area">
         <v-card class="modern-card songs-main__content-card" elevation="0">
-          <!-- HazardsMain-style header inside content (like Memunim screenshot) -->
           <v-card-title class="modern-title songs-main__card-title">
             <div class="title-container">
               <v-btn
@@ -199,8 +275,8 @@ function onSongSaved(savedSong) {
                 variant="text"
                 density="comfortable"
                 aria-label="תפריט ניווט"
-                @click="navDrawerOpen = true"
-              />
+                @click="openNavDrawer"
+              ></v-btn>
               <h2 class="title-text">{{ activeTitle }}</h2>
               <v-spacer />
               <div class="songs-main__header-actions">
@@ -230,34 +306,48 @@ function onSongSaved(savedSong) {
           <v-card-text class="pa-0">
             <v-tabs-window v-model="activeTab" class="songs-main__window">
               <v-tabs-window-item value="songs">
-                <div class="tiles-container">
-                  <template v-if="songs.length">
-                    <v-card
-                      v-for="song in songs"
-                      :key="song.id || `${song.name}-${song.artist}`"
-                      class="songs-main__song-item"
-                      variant="outlined"
+                <div class="tiles-container songs-main__songs-table-wrap">
+                  <div class="songs-main__songs-table-inner">
+                    <v-data-table
+                      class="songs-main__songs-table"
+                      :headers="songTableHeaders"
+                      :items="songsForTable"
+                      :loading="songsLoading"
+                      item-value="id"
+                      density="comfortable"
+                      hide-default-footer
                     >
-                      <v-card-text class="d-flex align-center justify-space-between py-3">
-                        <div class="min-width-0">
-                          <div class="font-weight-medium text-truncate">{{ song.name }}</div>
-                          <div class="text-body-2 text-medium-emphasis text-truncate">
-                            {{ song.artist }} | {{ song.category }} | {{ song.language }}
-                          </div>
-                        </div>
+                      <template #item.name="{ item }">
+                        <a
+                          v-if="item.linkUrl"
+                          :href="item.linkUrl"
+                          class="songs-main__song-name-link text-primary text-decoration-none font-weight-medium"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {{ item.name }}
+                        </a>
+                        <span v-else class="font-weight-medium">{{ item.name }}</span>
+                      </template>
+                      <template #item.actions="{ item }">
                         <v-btn
                           size="small"
                           variant="text"
                           color="primary"
                           prepend-icon="mdi-pencil"
-                          @click="onEditSong(song)"
+                          aria-label="ערוך שיר"
+                          @click="onEditSong(item)"
                         >
                           ערוך
                         </v-btn>
-                      </v-card-text>
-                    </v-card>
-                  </template>
-                  <div v-else class="no-data">כאן תוצג רשימת השירים.</div>
+                      </template>
+                      <template #no-data>
+                        <div class="no-data pa-6">
+                          {{ songsLoading ? 'טוען…' : 'אין שירים. לחץ על &quot;הוסף שיר&quot;.' }}
+                        </div>
+                      </template>
+                    </v-data-table>
+                  </div>
                 </div>
               </v-tabs-window-item>
               <v-tabs-window-item value="categories">
@@ -362,6 +452,7 @@ function onSongSaved(savedSong) {
 
     <v-dialog v-model="showUpsertDialog" max-width="1000" width="90%" persistent>
       <UpsertSong
+        v-if="showUpsertDialog"
         :show-dialog="showUpsertDialog"
         :edit-song="selectedSong"
         @close-dialog="onCloseDialog"
@@ -574,5 +665,24 @@ function onSongSaved(savedSong) {
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.songs-main__songs-table-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.songs-main__songs-table-inner {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+}
+
+.songs-main__song-name-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 </style>

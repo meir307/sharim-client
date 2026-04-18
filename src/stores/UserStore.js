@@ -27,6 +27,8 @@ export const useUserStore = defineStore('UserStore', {
       return user
     })(),
     error: null,
+    /** Songs from `song/fetchSongs` — not persisted to localStorage */
+    songs: [],
   }),
 
   getters: {
@@ -46,6 +48,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.artists = []
         }
         localStorage.setItem('user', JSON.stringify(this.user))
+        this.songs = []
       } catch (error) {
         const message = error.response?.data?.message ?? error.message
         alert(message)
@@ -68,6 +71,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.artists = []
         }
         localStorage.setItem('user', JSON.stringify(this.user))
+        this.songs = []
         alert('הרשמה בוצעה בהצלחה.')
         console.log(response)
         return response
@@ -281,15 +285,68 @@ export const useUserStore = defineStore('UserStore', {
       return true
     },
 
+    /**
+     * Load all songs for the current session.
+     * @returns {Promise<Array>}
+     */
+    async fetchSongs() {
+      this.preAction()
+      try {
+        const response = await axios.post(
+          this.apiUrl + 'song/fetchSongs',
+          {},
+          {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          },
+        )
+        const raw = response.data?.songs ?? response.data?.data ?? response.data
+        const list = Array.isArray(raw) ? raw : []
+        this.songs = list
+        return list
+      } catch (error) {
+        this.songs = []
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        this.postAction()
+      }
+    },
+
+    /**
+     * Upsert a song. When `songData.__cordsFileUpload` is a `File`, sends `multipart/form-data`:
+     * - `song`: JSON string of the song (same shape as the JSON body without the upload key)
+     * - `cordsFile`: the binary file part
+     * Otherwise sends a normal JSON body. Strip `__cordsFileUpload` before serializing.
+     */
     async upsertSong(songData) {
       this.preAction()
       try {
-        const payload = {
-          ...songData,
-          cords: typeof songData.cords === 'string' ? JSON.parse(songData.cords) : songData.cords,
+        const file = songData?.__cordsFileUpload
+        const { __cordsFileUpload: _omit, ...songWithoutUpload } = songData || {}
+        const cords =
+          typeof songWithoutUpload.cords === 'string'
+            ? JSON.parse(songWithoutUpload.cords)
+            : songWithoutUpload.cords
+        const body = { ...songWithoutUpload, cords }
+
+        if (file instanceof File) {
+          const formData = new FormData()
+          formData.append('song', JSON.stringify(body))
+          formData.append('cordsFile', file, file.name)
+
+          const response = await axios.post(this.apiUrl + 'song/upsert', formData, {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          })
+          return response
         }
 
-        const response = await axios.post(this.apiUrl + 'song/upsert', payload, {
+        const response = await axios.post(this.apiUrl + 'song/upsert', body, {
           headers: {
             sessionId: this.user.sessionId || '',
           },
@@ -308,6 +365,7 @@ export const useUserStore = defineStore('UserStore', {
 
     logout() {
       this.user = {}
+      this.songs = []
       localStorage.removeItem('user')
     },
 
