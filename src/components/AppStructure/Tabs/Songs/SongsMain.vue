@@ -5,6 +5,7 @@ import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
 import UpsertCategory from './UpsertCategory.vue'
 import UpsertArtist from './UpsertArtist.vue'
+import DisplaySong from './DisplaySong.vue'
 import { useSongsMainList, useSongsMainActiveTitle, runDeleteCategoryConfirmed, runDeleteArtistConfirmed } from './songsMainTable.js'
 
 const userStore = useUserStore()
@@ -125,6 +126,34 @@ const activeTitle = useSongsMainActiveTitle(activeTab);
 async function onSongSaved() {
   await songsList.loadSongs()
 }
+
+const showLinkPreviewDialog = ref(false)
+const linkPreviewUrl = ref('')
+const linkPreviewTitle = ref('')
+const linkPreviewCords = ref(null)
+
+function pickCordsFromSongRow(row) {
+  if (!row || typeof row !== 'object') return null
+  return row.cords ?? row.Cords ?? null
+}
+
+function openLinkPreview(item) {
+  const url = String(item?.linkUrl ?? '').trim()
+  if (!url) return
+  linkPreviewUrl.value = url
+  linkPreviewTitle.value = String(item?.name ?? '').trim() || url
+  const id = item?.id
+  const fromStore =
+    id != null ? userStore.songs.find((s) => String(s?.id) === String(id)) : null
+  linkPreviewCords.value = pickCordsFromSongRow(fromStore) ?? pickCordsFromSongRow(item)
+  showLinkPreviewDialog.value = true
+}
+
+function onLinkPreviewAfterLeave() {
+  linkPreviewUrl.value = ''
+  linkPreviewTitle.value = ''
+  linkPreviewCords.value = null
+}
 </script>
 
 <template>
@@ -229,10 +258,10 @@ async function onSongSaved() {
                       <template #item.name="{ item }">
                         <a
                           v-if="item.linkUrl"
-                          :href="item.linkUrl"
-                          class="songs-main__song-name-link text-primary text-decoration-none font-weight-medium"
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          href="#"
+                          role="button"
+                          class="songs-main__song-name-link text-primary text-decoration-none font-weight-medium cursor-pointer"
+                          @click.prevent="openLinkPreview(item)"
                         >
                           {{ item.name }}
                         </a>
@@ -386,6 +415,14 @@ async function onSongSaved() {
         @saved="onCloseArtistDialog"
       />
     </v-dialog>
+
+    <DisplaySong
+      v-model="showLinkPreviewDialog"
+      :link-url="linkPreviewUrl"
+      :song-title="linkPreviewTitle"
+      :cords="linkPreviewCords"
+      @closed="onLinkPreviewAfterLeave"
+    />
   </div>
 </template>
 
