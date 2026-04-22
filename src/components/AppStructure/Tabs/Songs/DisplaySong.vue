@@ -115,6 +115,9 @@ function close() {
     height="95vh"
     max-height="95vh"
     scrollable
+    persistent
+    retain-focus
+    scroll-strategy="block"
     @after-leave="emit('closed')"
   >
     <v-card class="display-song__card" rounded="lg">
@@ -191,8 +194,10 @@ function close() {
   height: 100%;
   overflow: auto;
   box-sizing: border-box;
+  padding: 16px;
   border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgb(var(--v-theme-surface));
+  
 }
 
 .display-song__cords-pre {
@@ -205,6 +210,8 @@ function close() {
   word-break: break-word;
   font-family: inherit;
   color: rgb(var(--v-theme-on-surface));
+  background-color: rgb(236, 220, 149);
+  font-size: 21px;
 }
 
 .display-song__shell {
