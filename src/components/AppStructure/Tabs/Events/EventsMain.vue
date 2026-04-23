@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import PlaylistsMain from './playlists/PlaylistsMain.vue'
+import UpsertPlaylist from './playlists/UpsertPlaylist.vue'
 import EventsListMain from './events/EventsListMain.vue'
 
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
@@ -19,6 +20,9 @@ watch(activeSubTab, () => {
   }
 })
 
+const showUpsertPlaylistDialog = ref(false)
+const editPlaylist = ref(null)
+
 const activeTitle = computed(() =>
   activeSubTab.value === 'playlists' ? 'פלייליסטים' : 'אירועים',
 )
@@ -28,7 +32,23 @@ function openNavDrawer() {
 }
 
 function onAddPlaylist() {
-  // TODO: open create playlist flow
+  editPlaylist.value = null
+  showUpsertPlaylistDialog.value = true
+}
+
+function onCloseUpsertPlaylistDialog() {
+  showUpsertPlaylistDialog.value = false
+  editPlaylist.value = null
+}
+
+function onEditPlaylistFromList(playlist) {
+  editPlaylist.value = playlist && typeof playlist === 'object' ? { ...playlist } : null
+  showUpsertPlaylistDialog.value = true
+}
+
+function onPlaylistSaved() {
+  editPlaylist.value = null
+  showUpsertPlaylistDialog.value = false
 }
 
 function onAddEvent() {
@@ -119,7 +139,7 @@ function onAddEvent() {
               <v-tabs-window-item value="playlists">
                 <div class="tiles-container events-main__panel-wrap">
                   <div class="events-main__panel-inner">
-                    <PlaylistsMain />
+                    <PlaylistsMain @edit-playlist="onEditPlaylistFromList" />
                   </div>
                 </div>
               </v-tabs-window-item>
@@ -135,6 +155,16 @@ function onAddEvent() {
         </v-card>
       </div>
     </div>
+
+    <v-dialog v-model="showUpsertPlaylistDialog" max-width="960" width="92%" persistent>
+      <UpsertPlaylist
+        v-if="showUpsertPlaylistDialog"
+        :show-dialog="showUpsertPlaylistDialog"
+        :edit-playlist="editPlaylist"
+        @close-dialog="onCloseUpsertPlaylistDialog"
+        @saved="onPlaylistSaved"
+      />
+    </v-dialog>
   </div>
 </template>
 

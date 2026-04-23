@@ -77,7 +77,8 @@ function songListUrl(row) {
   return ''
 }
 
-function songRowForTable(s, catList, artList) {
+/** Table row shape for songs (name, categoryName, artistName, linkUrl, plus raw song fields). */
+export function songRowForTable(s, catList, artList) {
   const linkUrl = songListUrl(s)
   const row = Object.assign({}, s)
   row.categoryName = categoryNameForSong(s, catList)

@@ -2,6 +2,51 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useLoaderStore } from './LoaderStore'
 
+/**
+ * Ensure `user.playLists` is a mutable array (parse JSON string from API / DB).
+ * Ensures `user.emitCode` is a string.
+ * @param {Record<string, unknown>} user
+ */
+export function normalizeUserPlaylistsAndEmitCode(user) {
+  if (!user || typeof user !== 'object') return
+  let pl = user.playLists ?? user.playlists ?? user.PlayLists
+  if (typeof pl === 'string') {
+    try {
+      const parsed = JSON.parse(pl)
+      pl = Array.isArray(parsed) ? parsed : []
+    } catch {
+      pl = []
+    }
+  }
+  user.playLists = Array.isArray(pl) ? pl : []
+  user.emitCode = user.emitCode == null ? '' : String(user.emitCode)
+}
+
+/**
+ * Persist playlist `songs` as compact refs: `{ id }` when possible, else `{ name, url }`.
+ * @param {unknown[]} songs
+ * @returns {Array<Record<string, unknown>>}
+ */
+function normalizePlaylistSongsForStorage(songs) {
+  if (!Array.isArray(songs)) return []
+  return songs
+    .map((s) => {
+      if (!s || typeof s !== 'object') return null
+      const id = s.id ?? s.Id
+      if (id != null && String(id).trim() !== '') {
+        const sn = String(id).trim()
+        return Number.isFinite(Number(sn)) && /^\d+$/.test(sn) ? { id: Number(sn) } : { id: sn }
+      }
+      const o = {}
+      const name = s.name ?? s.Name
+      const url = s.url ?? s.Url ?? s.link ?? s.Link
+      if (name != null && String(name).trim() !== '') o.name = String(name).trim()
+      if (url != null && String(url).trim() !== '') o.url = String(url).trim()
+      return Object.keys(o).length ? o : null
+    })
+    .filter(Boolean)
+}
+
 /** Next 1-based sequential id from existing `{ id }` rows (numeric only). */
 function nextSequentialId(items) {
   const list = Array.isArray(items) ? items : []
@@ -10,6 +55,16 @@ function nextSequentialId(items) {
     .filter((n) => Number.isInteger(n) && n >= 1)
   if (nums.length === 0) return 1
   return Math.max(...nums) + 1
+}
+
+/** New playlist id: max numeric id + 1, or a string id if none are numeric. */
+function nextPlaylistId(prev) {
+  const list = Array.isArray(prev) ? prev : []
+  const nums = list
+    .map((p) => Number(p?.id ?? p?.Id))
+    .filter((n) => Number.isInteger(n) && n >= 1)
+  if (nums.length > 0) return Math.max(...nums) + 1
+  return `pl_${Date.now()}`
 }
 
 export const useUserStore = defineStore('UserStore', {
@@ -23,6 +78,7 @@ export const useUserStore = defineStore('UserStore', {
       if (user && typeof user === 'object') {
         if (!Array.isArray(user.categories)) user.categories = []
         if (!Array.isArray(user.artists)) user.artists = []
+        normalizeUserPlaylistsAndEmitCode(user)
       }
       return user
     })(),
@@ -47,6 +103,7 @@ export const useUserStore = defineStore('UserStore', {
         if (!Array.isArray(this.user.artists)) {
           this.user.artists = []
         }
+        normalizeUserPlaylistsAndEmitCode(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         this.songs = []
       } catch (error) {
@@ -70,6 +127,7 @@ export const useUserStore = defineStore('UserStore', {
         if (!Array.isArray(this.user.artists)) {
           this.user.artists = []
         }
+        normalizeUserPlaylistsAndEmitCode(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         this.songs = []
         alert('הרשמה בוצעה בהצלחה.')
@@ -124,6 +182,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.categories = []
         }
 
+        normalizeUserPlaylistsAndEmitCode(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         return response
       } catch (error) {
@@ -224,6 +283,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.artists = []
         }
 
+        normalizeUserPlaylistsAndEmitCode(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         return response
       } catch (error) {
@@ -282,6 +342,101 @@ export const useUserStore = defineStore('UserStore', {
         return false
       }
       await this._saveArtistsList(next)
+      return true
+    },
+
+    /**
+     * POST full playlists array to `user/SavePlaylists` and merge response into `user` + localStorage.
+     * @param {Array<Record<string, unknown>>} next
+     */
+    async _savePlaylistsList(next) {
+      this.preAction()
+      try {
+        const response = await axios.post(
+          this.apiUrl + 'user/SavePlaylists',
+          { playLists: next },
+          {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          },
+        )
+
+        const d = response.data ?? {}
+        const failed = d.success === false || d.Success === false
+        if (failed) {
+          const message = d.errorMessage || 'שמירת הפלייליסטים נכשלה'
+          alert(message)
+          this.error = message
+          throw new Error(message)
+        }
+
+        // API does not return updated lists — keep the payload we posted.
+        this.user = { ...this.user, playLists: Array.isArray(next) ? [...next] : [] }
+
+        normalizeUserPlaylistsAndEmitCode(this.user)
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return response
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        this.postAction()
+      }
+    },
+
+    /**
+     * Add or update a playlist (name + ordered songs), POST full list, then sync `user` + localStorage.
+     * @param {{ id?: number|string|null, name: string, songs: unknown[] }} payload
+     * @returns {Promise<Record<string, unknown> | null>}
+     */
+    async upsertPlaylist(payload) {
+      const trimmed = String(payload?.name ?? '').trim()
+      if (!trimmed) {
+        return null
+      }
+
+      const prev = Array.isArray(this.user.playLists) ? [...this.user.playLists] : []
+      const storedSongs = normalizePlaylistSongsForStorage(payload?.songs)
+      const next = [...prev]
+      const pid = payload?.id ?? payload?.Id
+      let targetId
+
+      if (pid != null && String(pid).trim() !== '') {
+        const idStr = String(pid).trim()
+        const idx = next.findIndex((p) => String(p?.id ?? p?.Id) === idStr)
+        const row = { id: /^\d+$/.test(idStr) ? Number(idStr) : pid, name: trimmed, songs: storedSongs }
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], ...row }
+        } else {
+          next.push(row)
+        }
+        targetId = idStr
+      } else {
+        const newId = nextPlaylistId(prev)
+        targetId = String(newId)
+        next.push({ id: newId, name: trimmed, songs: storedSongs })
+      }
+
+      await this._savePlaylistsList(next)
+      const merged = Array.isArray(this.user.playLists) ? this.user.playLists : []
+      return merged.find((p) => String(p?.id ?? p?.Id) === targetId) ?? null
+    },
+
+    /**
+     * Remove a playlist by index and POST the remaining list to `user/SavePlaylists`.
+     * @param {number} index
+     * @returns {Promise<boolean>} true if a row was removed
+     */
+    async deletePlaylistAt(index) {
+      const prev = Array.isArray(this.user.playLists) ? [...this.user.playLists] : []
+      if (typeof index !== 'number' || index < 0 || index >= prev.length) {
+        return false
+      }
+      const next = prev.filter((_, i) => i !== index)
+      await this._savePlaylistsList(next)
       return true
     },
 
