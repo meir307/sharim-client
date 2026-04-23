@@ -2,11 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
 import { songRowForTable } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
+import DisplaySong from '@/components/AppStructure/Tabs/Songs/DisplaySong.vue'
 
 const emit = defineEmits(['edit-playlist'])
 
 const userStore = useUserStore()
 const songsLoading = ref(false)
+const showDisplaySong = ref(false)
+const displaySongPlaylist = ref(null)
 /** Stable key: playlist `id` or fallback `i:{index}` */
 const selectedPlaylistKey = ref(null)
 
@@ -115,6 +118,16 @@ function onEditPlaylist(playlist) {
   emit('edit-playlist', playlist)
 }
 
+async function onActivatePlaylist(playlist) {
+  await ensureSongsLoaded()
+  displaySongPlaylist.value = playlist && typeof playlist === 'object' ? { ...playlist } : null
+  showDisplaySong.value = true
+}
+
+function onDisplaySongClosed() {
+  displaySongPlaylist.value = null
+}
+
 async function onDeletePlaylist(playlist, index) {
   const name = playlistDisplayName(playlist)
   if (!window.confirm(`למחוק את הפלייליסט "${name}"?`)) {
@@ -181,6 +194,15 @@ onMounted(() => {
               <template #append>
                 <div class="playlists-main__playlist-actions" @click.stop>
                   <v-btn
+                    icon="mdi-play-circle-outline"
+                    variant="text"
+                    size="small"
+                    density="comfortable"
+                    color="success"
+                    aria-label="הפעל פלייליסט"
+                    @click="onActivatePlaylist(pl)"
+                  />
+                  <v-btn
                     icon="mdi-pencil"
                     variant="text"
                     size="small"
@@ -237,6 +259,15 @@ onMounted(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <DisplaySong
+      v-model="showDisplaySong"
+      :playlist="displaySongPlaylist"
+      link-url=""
+      song-title=""
+      :cords="null"
+      @closed="onDisplaySongClosed"
+    />
   </div>
 </template>
 

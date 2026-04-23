@@ -60,6 +60,7 @@ watch(
   <v-navigation-drawer v-model="drawer" location="start" temporary width="280">
     <v-list class="pt-4" nav density="comfortable">
       <v-list-item
+        v-if="!isAuthenticated"
         :to="{ name: 'home' }"
         prepend-icon="mdi-home-outline"
         title="בית"
@@ -73,9 +74,15 @@ watch(
           rounded="lg"
         />
         <v-list-item
-          :to="{ name: 'events' }"
+          :to="{ name: 'playlists' }"
           prepend-icon="mdi-calendar-star"
           title="אירועים"
+          rounded="lg"
+        />
+        <v-list-item
+          :to="{ name: 'sharing' }"
+          prepend-icon="mdi-share-variant-outline"
+          title="שיתוף"
           rounded="lg"
         />
       </template>
@@ -124,7 +131,7 @@ watch(
       height="48"
       slider-color="white"
     >
-      <v-tab :to="{ name: 'home' }" text="בית" value="home" />
+      <v-tab v-if="!isAuthenticated" :to="{ name: 'home' }" text="בית" value="home" />
       <v-tab
         v-if="isAuthenticated"
         :to="{ name: 'songs' }"
@@ -133,9 +140,15 @@ watch(
       />
       <v-tab
         v-if="isAuthenticated"
-        :to="{ name: 'events' }"
-        text="אירועים"
-        value="events"
+        :to="{ name: 'playlists' }"
+        text="פלייליסטים"
+        value="playlists"
+      />
+      <v-tab
+        v-if="isAuthenticated"
+        :to="{ name: 'sharing' }"
+        text="שיתוף"
+        value="sharing"
       />
     </v-tabs>
 
@@ -184,7 +197,7 @@ watch(
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  max-width: min(100% - 16rem, 22rem);
+  max-width: min(100% - 16rem, 30rem);
 }
 
 .top-strip__tabs--guest {

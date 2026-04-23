@@ -57,20 +57,20 @@ function onAddEvent() {
 </script>
 
 <template>
-  <div class="events-main">
+  <div class="playlists-tab">
     <v-navigation-drawer
       v-if="showNavInDrawer"
       v-model="navDrawerOpen"
       temporary
       location="start"
       width="260"
-      class="events-main__nav-drawer"
+      class="playlists-tab__nav-drawer"
     >
-      <v-card class="navigation-card events-main__nav-drawer-card" elevation="0" variant="flat">
+      <v-card class="navigation-card playlists-tab__nav-drawer-card" elevation="0" variant="flat">
         <v-tabs
           v-model="activeSubTab"
           direction="vertical"
-          class="events-main__tabs"
+          class="playlists-tab__tabs"
           bg-color="transparent"
           color="primary"
           slider-color="primary"
@@ -89,7 +89,7 @@ function onAddEvent() {
           <v-tabs
             v-model="activeSubTab"
             direction="vertical"
-            class="events-main__tabs"
+            class="playlists-tab__tabs"
             bg-color="transparent"
             color="primary"
             slider-color="primary"
@@ -103,12 +103,12 @@ function onAddEvent() {
       </aside>
 
       <div class="content-area">
-        <v-card class="modern-card events-main__content-card" elevation="0">
-          <v-card-title class="modern-title events-main__card-title">
+        <v-card class="modern-card playlists-tab__content-card" elevation="0">
+          <v-card-title class="modern-title playlists-tab__card-title">
             <div class="title-container">
               <v-btn
                 v-if="showNavInDrawer"
-                class="events-main__nav-open"
+                class="playlists-tab__nav-open"
                 icon="mdi-menu"
                 variant="text"
                 density="comfortable"
@@ -117,7 +117,7 @@ function onAddEvent() {
               ></v-btn>
               <h2 class="title-text">{{ activeTitle }}</h2>
               <v-spacer />
-              <div class="events-main__header-actions">
+              <div class="playlists-tab__header-actions">
                 <template v-if="activeSubTab === 'playlists'">
                   <v-btn color="primary" class="add-btn" @click="onAddPlaylist">
                     <v-icon start>mdi-plus</v-icon>
@@ -135,17 +135,17 @@ function onAddEvent() {
           </v-card-title>
 
           <v-card-text class="pa-0">
-            <v-tabs-window v-model="activeSubTab" class="events-main__window">
+            <v-tabs-window v-model="activeSubTab" class="playlists-tab__window">
               <v-tabs-window-item value="playlists">
-                <div class="tiles-container events-main__panel-wrap">
-                  <div class="events-main__panel-inner">
+                <div class="tiles-container playlists-tab__panel-wrap">
+                  <div class="playlists-tab__panel-inner">
                     <PlaylistsMain @edit-playlist="onEditPlaylistFromList" />
                   </div>
                 </div>
               </v-tabs-window-item>
               <v-tabs-window-item value="events">
-                <div class="tiles-container events-main__panel-wrap">
-                  <div class="events-main__panel-inner">
+                <div class="tiles-container playlists-tab__panel-wrap">
+                  <div class="playlists-tab__panel-inner">
                     <EventsListMain />
                   </div>
                 </div>
@@ -169,7 +169,7 @@ function onAddEvent() {
 </template>
 
 <style scoped>
-.events-main {
+.playlists-tab {
   box-sizing: border-box;
   width: 100vw;
   max-width: 100vw;
@@ -180,7 +180,7 @@ function onAddEvent() {
 }
 
 @media (min-width: 600px) {
-  .events-main {
+  .playlists-tab {
     margin-top: -24px;
     padding-inline: 16px;
     padding-top: 24px;
@@ -225,27 +225,27 @@ function onAddEvent() {
   height: 100%;
 }
 
-.events-main__content-card {
+.playlists-tab__content-card {
   min-height: 100%;
 }
 
-.events-main__card-title {
+.playlists-tab__card-title {
   display: flex !important;
   align-items: center;
   min-height: 56px;
   box-sizing: border-box;
 }
 
-.events-main__card-title :deep(.title-container) {
+.playlists-tab__card-title :deep(.title-container) {
   width: 100%;
   align-items: center;
 }
 
-.events-main__nav-open {
+.playlists-tab__nav-open {
   flex-shrink: 0;
 }
 
-.events-main__header-actions {
+.playlists-tab__header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -255,23 +255,23 @@ function onAddEvent() {
   min-height: 40px;
 }
 
-.events-main__tabs {
+.playlists-tab__tabs {
   width: 100%;
 }
 
-.events-main__tabs :deep(.v-tab) {
+.playlists-tab__tabs :deep(.v-tab) {
   justify-content: flex-start;
 }
 
-.events-main__window :deep(.v-window__container) {
+.playlists-tab__window :deep(.v-window__container) {
   min-height: 200px;
 }
 
-.events-main__window :deep(.v-window-item) {
+.playlists-tab__window :deep(.v-window-item) {
   min-height: 200px;
 }
 
-.events-main__window :deep(.tiles-container) {
+.playlists-tab__window :deep(.tiles-container) {
   min-height: 200px;
 }
 
@@ -291,23 +291,23 @@ function onAddEvent() {
   }
 }
 
-.events-main__nav-drawer-card {
+.playlists-tab__nav-drawer-card {
   height: 100%;
   border-radius: 0;
   border: none;
 }
 
-.events-main__nav-drawer :deep(.v-navigation-drawer__content) {
+.playlists-tab__nav-drawer :deep(.v-navigation-drawer__content) {
   display: flex;
   flex-direction: column;
 }
 
-.events-main__panel-wrap {
+.playlists-tab__panel-wrap {
   width: 100%;
   min-width: 0;
 }
 
-.events-main__panel-inner {
+.playlists-tab__panel-inner {
   width: 100%;
   max-width: 100%;
   border-radius: 8px;

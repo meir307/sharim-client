@@ -64,7 +64,7 @@ function songsUsingArtist(userStore, artist) {
 }
 
 /** External URL for the song name cell (supports common API casings). */
-function songListUrl(row) {
+export function songListUrl(row) {
   if (!row || typeof row !== 'object') return ''
   const keys = ['url', 'Url', 'link', 'Link', 'songUrl', 'SongUrl']
   for (const k of keys) {
