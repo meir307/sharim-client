@@ -16,6 +16,7 @@ const userStore = useUserStore()
 
 const isAuthenticated = computed(() => Boolean(userStore.user?.isAuthenticated))
 const userFullName = computed(() => userStore.user?.fullName ?? '')
+const sharingActive = computed(() => userStore.sharingActive)
 
 function openLogin() {
   loginOpen.value = true
@@ -84,7 +85,11 @@ watch(
           prepend-icon="mdi-share-variant-outline"
           title="שיתוף"
           rounded="lg"
-        />
+        >
+          <template v-if="sharingActive" #append>
+            <v-icon icon="mdi-circle" color="error" size="12" aria-hidden="true" />
+          </template>
+        </v-list-item>
       </template>
 
       <v-divider class="my-3" />
@@ -120,7 +125,19 @@ watch(
       @click="drawer = true"
     />
 
-    <v-app-bar-title v-if="mdAndUp" class="top-strip__title">Sharim</v-app-bar-title>
+    <div v-if="mdAndUp" class="top-strip__brand d-flex align-center flex-shrink-0">
+      <v-app-bar-title class="top-strip__title">Sharim</v-app-bar-title>
+      <v-chip
+        v-if="isAuthenticated && sharingActive"
+        color="error"
+        variant="flat"
+        size="small"
+        class="top-strip__sharing-chip flex-shrink-0"
+        prepend-icon="mdi-broadcast"
+      >
+        שיתוף פעיל
+      </v-chip>
+    </div>
 
     <v-tabs
       v-if="mdAndUp"
@@ -144,12 +161,19 @@ watch(
         text="פלייליסטים"
         value="playlists"
       />
-      <v-tab
-        v-if="isAuthenticated"
-        :to="{ name: 'sharing' }"
-        text="שיתוף"
-        value="sharing"
-      />
+      <v-tab v-if="isAuthenticated" :to="{ name: 'sharing' }" value="sharing">
+        <span class="top-strip__tab-sharing d-inline-flex align-center">
+          שיתוף
+          <v-icon
+            v-if="sharingActive"
+            icon="mdi-circle"
+            color="error"
+            size="10"
+            class="top-strip__sharing-tab-dot"
+            aria-hidden="true"
+          />
+        </span>
+      </v-tab>
     </v-tabs>
 
     <v-spacer />
@@ -192,6 +216,17 @@ watch(
 </template>
 
 <style scoped>
+.top-strip__brand {
+  gap: 10px;
+  align-items: center;
+  margin-inline: 8px;
+}
+
+.top-strip__brand :deep(.v-toolbar-title) {
+  flex: 0 0 auto;
+  padding-inline: 0;
+}
+
 .top-strip__tabs {
   position: absolute;
   left: 50%;
@@ -228,5 +263,14 @@ watch(
 
 .top-strip__user-avatar :deep(.v-icon) {
   color: white;
+}
+
+.top-strip__tab-sharing {
+  gap: 6px;
+  align-items: center;
+}
+
+.top-strip__sharing-tab-dot {
+  opacity: 0.95;
 }
 </style>

@@ -4,7 +4,7 @@ import { useLoaderStore } from './LoaderStore'
 
 /**
  * Ensure `user.playLists` is a mutable array (parse JSON string from API / DB).
- * Ensures `user.emitCode` is a string.
+ * Ensures `user.emitCode` is a string and `user.sharingActive` is a boolean (guest sharing on/off).
  * @param {Record<string, unknown>} user
  */
 export function normalizeUserPlaylistsAndEmitCode(user) {
@@ -20,6 +20,9 @@ export function normalizeUserPlaylistsAndEmitCode(user) {
   }
   user.playLists = Array.isArray(pl) ? pl : []
   user.emitCode = user.emitCode == null ? '' : String(user.emitCode)
+  const sa = user.sharingActive
+  user.sharingActive =
+    sa === true || sa === 1 || String(sa).toLowerCase() === 'true'
 }
 
 /**
@@ -89,6 +92,9 @@ export const useUserStore = defineStore('UserStore', {
 
   getters: {
     apiUrl1: (state) => state.apiUrl,
+    /** Local-only: host marked guest lyrics sharing as active (no server round-trip). */
+    sharingActive: (state) =>
+      Boolean(state.user && typeof state.user === 'object' && state.user.sharingActive === true),
   },
 
   actions: {
@@ -516,6 +522,18 @@ export const useUserStore = defineStore('UserStore', {
       } finally {
         this.postAction()
       }
+    },
+
+    /**
+     * Toggle local guest-sharing flag (persisted on `user` in localStorage). No API call.
+     */
+    toggleSharingActive() {
+      if (!this.user || typeof this.user !== 'object' || !this.user.isAuthenticated) {
+        return
+      }
+      const next = !Boolean(this.user.sharingActive)
+      this.user = { ...this.user, sharingActive: next }
+      localStorage.setItem('user', JSON.stringify(this.user))
     },
 
     logout() {
