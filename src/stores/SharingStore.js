@@ -108,7 +108,7 @@ export const useSharingStore = defineStore('SharingStore', {
      */
     async refreshLyrics() {
       const userStore = useUserStore()
-      if (!String(this.guestEmitCode ?? '').trim()) return
+      if (!String(this.guestEmitCode ?? '').trim()) return false
       
       try {
         const { data } = await axios.post(
@@ -120,12 +120,14 @@ export const useSharingStore = defineStore('SharingStore', {
           this.guestLyricsLink = nextLink
           saveGuestSession(this.guestLyricsLink, this.guestEmitCode)
         }
+        return true
       } catch {
         // If sharing is stopped/invalid, clear stale lyrics so guest page exits iframe mode.
         if (this.guestLyricsLink !== '') {
           this.guestLyricsLink = ''
           saveGuestSession(this.guestLyricsLink, this.guestEmitCode)
         }
+        return false
       }
     },
 

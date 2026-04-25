@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useSharingStore } from '@/stores/SharingStore'
 
 const route = useRoute()
+const router = useRouter()
 const sharingStore = useSharingStore()
 const isTopWindow = typeof window === 'undefined' ? true : window.self === window.top
 
@@ -83,7 +84,12 @@ const renderLyricsIframe = computed(
 
 onMounted(() => {
   lyricsPollTimer = setInterval(() => {
-    void sharingStore.refreshLyrics()
+    void (async () => {
+      const ok = await sharingStore.refreshLyrics()
+      if (!ok) {
+        router.replace({ name: 'home' })
+      }
+    })()
   }, REFRESH_MS)
 })
 
