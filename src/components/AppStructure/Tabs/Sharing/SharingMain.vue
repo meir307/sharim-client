@@ -1,13 +1,17 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
+import { useSharingStore } from '@/stores/SharingStore'
 import { buildGuestWordsShareUrl } from '@/utils/shareGuestUrl'
 
 const userStore = useUserStore()
+const sharingStore = useSharingStore()
 
 const copySnackbar = ref(false)
 const copySnackbarText = ref('')
 const copySnackbarColor = ref('success')
+
+const sharingToggleLoading = ref(false)
 
 async function copyInvitationToClipboard() {
   const text = invitationText.value
@@ -39,16 +43,25 @@ const invitationText = computed(() => {
     'במהלך האירוע אפשר לעקוב אחרי מילות השירים בקישור הייעודי:',
     url,
     '',
+    'חשוב: הקישור יהיה זמין דקות ספורות לפני תחילת האירוע.',
     'נשמח לראותכם!',
   ].join('\n')
 })
 
-function onToggleSharing() {
-  userStore.toggleSharingActive()
-  const on = userStore.sharingActive
-  copySnackbarText.value = on ? 'שיתוף האורחים פעיל' : 'שיתוף האורחים הושבת'
-  copySnackbarColor.value = on ? 'success' : 'secondary'
-  copySnackbar.value = true
+async function onToggleSharing() {
+  const startSharing = !sharingActive.value
+  sharingToggleLoading.value = true
+  try {
+    await sharingStore.setGuestSharingActive(startSharing)
+    const on = userStore.sharingActive
+    copySnackbarText.value = on ? 'שיתוף האורחים פעיל' : 'שיתוף האורחים הושבת'
+    copySnackbarColor.value = on ? 'success' : 'secondary'
+    copySnackbar.value = true
+  } catch {
+    // errors surfaced via UserStore (alert)
+  } finally {
+    sharingToggleLoading.value = false
+  }
 }
 </script>
 
@@ -104,6 +117,7 @@ function onToggleSharing() {
                       :color="sharingActive ? 'error' : 'success'"
                       variant="flat"
                       :prepend-icon="sharingActive ? 'mdi-broadcast-off' : 'mdi-broadcast'"
+                      :loading="sharingToggleLoading"
                       @click="onToggleSharing"
                     >
                       {{ sharingActive ? 'עצור שיתוף' : 'הפעל שיתוף' }}

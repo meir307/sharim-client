@@ -524,18 +524,6 @@ export const useUserStore = defineStore('UserStore', {
       }
     },
 
-    /**
-     * Toggle local guest-sharing flag (persisted on `user` in localStorage). No API call.
-     */
-    toggleSharingActive() {
-      if (!this.user || typeof this.user !== 'object' || !this.user.isAuthenticated) {
-        return
-      }
-      const next = !Boolean(this.user.sharingActive)
-      this.user = { ...this.user, sharingActive: next }
-      localStorage.setItem('user', JSON.stringify(this.user))
-    },
-
     logout() {
       this.user = {}
       this.songs = []

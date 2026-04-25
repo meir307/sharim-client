@@ -1,7 +1,7 @@
 /**
  * Public guest lyrics route (must match `router` path for `/guest/:emitCode`).
  */
-export const GUEST_WORDS_ROUTE_PREFIX = '/guest'
+export const GUEST_WORDS_ROUTE_PREFIX = '/home'
 
 /**
  * @returns {string} App base path without trailing slash, e.g. `''` or `'/subdir'`.
@@ -26,7 +26,7 @@ export function buildGuestWordsShareUrl(emitCode) {
     (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '')
   if (!origin) return ''
   const base = appBasePath()
-  const path = `${GUEST_WORDS_ROUTE_PREFIX}/${encodeURIComponent(code)}`
+  const path = `${GUEST_WORDS_ROUTE_PREFIX}?emitCode=${encodeURIComponent(code)}`
   const originClean = origin.replace(/\/$/, '')
   if (!base) return `${originClean}${path}`
   return `${originClean}${base}${path}`

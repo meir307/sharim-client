@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
+import { useSharingStore } from '@/stores/SharingStore'
 import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
 
 const open = defineModel({ type: Boolean, default: false })
@@ -16,6 +17,7 @@ const props = defineProps({
 const emit = defineEmits(['closed'])
 
 const userStore = useUserStore()
+const sharingStore = useSharingStore()
 const playlistSongIndex = ref(0)
 
 function firstDefinedString(obj, keys) {
@@ -227,6 +229,20 @@ watch([open, embedSrc, playlistSongIndex], async ([isOpen, src]) => {
   if (sc) sc.scrollTop = 0
   startAutoScroll()
 })
+
+function notifyUpdateActiveLink() {
+  const url = String(displayLinkUrl.value ?? '').trim()
+  if (!open.value || !url) return
+  void sharingStore.updateActiveLink(url)
+}
+
+watch(
+  () => [open.value, displayLinkUrl.value, playlistSongIndex.value],
+  () => {
+    notifyUpdateActiveLink()
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(stopAutoScroll)
 

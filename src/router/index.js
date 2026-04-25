@@ -8,7 +8,19 @@ const router = createRouter({
     {
       path: '/home',
       name: 'home',
-      component: () => import('@/components/AppStructure/Tabs/HomeTab.vue'),
+      component: () => import('@/components/AppStructure/Tabs/Home/HomeTab.vue'),
+    },
+    {
+      path: '/guest/view',
+      name: 'guest-words',
+      meta: { requiresAuth: false, guestFullscreen: true },
+      component: () => import('@/components/AppStructure/Tabs/Home/GuestWordsView.vue'),
+    },
+    {
+      path: '/guest/:emitCode',
+      name: 'guest-words-by-code',
+      meta: { requiresAuth: false, guestFullscreen: true },
+      component: () => import('@/components/AppStructure/Tabs/Home/GuestWordsView.vue'),
     },
     {
       path: '/songs',
