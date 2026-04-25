@@ -19,6 +19,7 @@ const emit = defineEmits(['closed'])
 const userStore = useUserStore()
 const sharingStore = useSharingStore()
 const playlistSongIndex = ref(0)
+const DISPLAY_SONG_INDEX_KEY = 'displaySongPlaylistIndexSession'
 
 function firstDefinedString(obj, keys) {
   if (!obj || typeof obj !== 'object') return ''
@@ -88,6 +89,40 @@ const activePlaylistSong = computed(() => {
   return list[i]
 })
 
+function currentPlaylistSessionKey() {
+  if (!hasPlaylist.value || !props.playlist) return ''
+  const id = props.playlist.id ?? props.playlist.Id
+  if (id != null && String(id).trim() !== '') return `id:${String(id).trim()}`
+  return `name:${displayPlaylistName.value}`
+}
+
+function loadSavedPlaylistSongIndex() {
+  if (typeof window === 'undefined') return 0
+  try {
+    const raw = localStorage.getItem(DISPLAY_SONG_INDEX_KEY)
+    if (!raw) return 0
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return 0
+    if (String(parsed.playlistKey ?? '') !== currentPlaylistSessionKey()) return 0
+    const idx = Number(parsed.index)
+    return Number.isInteger(idx) && idx >= 0 ? idx : 0
+  } catch {
+    return 0
+  }
+}
+
+function savePlaylistSongIndex() {
+  if (typeof window === 'undefined') return
+  if (!hasPlaylist.value || !open.value || resolvedPlaylistSongs.value.length === 0) return
+  localStorage.setItem(
+    DISPLAY_SONG_INDEX_KEY,
+    JSON.stringify({
+      playlistKey: currentPlaylistSessionKey(),
+      index: playlistSongIndex.value,
+    }),
+  )
+}
+
 const displayLinkUrl = computed(() => {
   if (activePlaylistSong.value) {
     return songListUrl(activePlaylistSong.value)
@@ -120,9 +155,18 @@ const displayCords = computed(() => {
 
 watch([open, () => props.playlist], ([isOpen]) => {
   if (isOpen && hasPlaylist.value) {
-    playlistSongIndex.value = 0
+    const max = Math.max(0, resolvedPlaylistSongs.value.length - 1)
+    playlistSongIndex.value = Math.min(loadSavedPlaylistSongIndex(), max)
   }
 })
+
+watch(
+  [open, playlistSongIndex, () => props.playlist],
+  () => {
+    savePlaylistSongIndex()
+  },
+  { deep: false },
+)
 
 function playlistPrev() {
   if (playlistSongIndex.value > 0) {
@@ -327,7 +371,7 @@ function close() {
               <iframe
                 v-if="open && displayLinkUrl"
                 :key="`${embedSrc}#${playlistSongIndex}`"
-                class="display-song__iframe"
+                class="display-song__iframe display-song__iframe--dark"
                 :src="embedSrc"
                 :title="displaySongTitle"
                 referrerpolicy="no-referrer-when-downgrade"
@@ -480,6 +524,12 @@ function close() {
   height: min(320vh, 9600px);
   min-height: min(180vh, 4800px);
   border: 0;
+}
+
+.display-song__iframe--dark {
+  /* Best-effort dark mode for iframe-rendered pages. */
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.95);
+  background: #111;
 }
 
 @media (max-width: 720px) {

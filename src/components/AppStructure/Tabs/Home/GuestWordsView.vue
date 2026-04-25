@@ -5,6 +5,7 @@ import { useSharingStore } from '@/stores/SharingStore'
 
 const route = useRoute()
 const sharingStore = useSharingStore()
+const isTopWindow = typeof window === 'undefined' ? true : window.self === window.top
 
 /** Prefer store (after home submit); fall back to `/guest/:emitCode` deep link. */
 const displayCode = computed(() => {
@@ -63,6 +64,23 @@ const showLyricsFrame = computed(() => {
   return Boolean(s) && s !== 'xxxxx'
 })
 
+/** Avoid recursive iframe (our guest page embedding itself repeatedly). */
+const canEmbedLyricsFrame = computed(() => {
+  const src = String(guestLyricsIframeSrc.value ?? '').trim()
+  if (!src) return false
+  try {
+    const u = new URL(src, window.location.origin)
+    const sameOrigin = u.origin === window.location.origin
+    if (!sameOrigin) return true
+    return !u.pathname.includes('/guest/')
+  } catch {
+    return true
+  }
+})
+const renderLyricsIframe = computed(
+  () => isTopWindow && showLyricsFrame.value && canEmbedLyricsFrame.value,
+)
+
 onMounted(() => {
   lyricsPollTimer = setInterval(() => {
     void sharingStore.refreshLyrics()
@@ -80,14 +98,14 @@ onUnmounted(() => {
 <template>
   <div class="guest-words" :class="{ 'guest-words--lyrics': showLyricsFrame }">
     <iframe
-      v-if="showLyricsFrame"
-      class="guest-words__iframe-full"
+      v-if="renderLyricsIframe"
+      class="guest-words__iframe-full guest-words__iframe-full--dark"
       :src="guestLyricsIframeSrc"
       title="מילות השיר"
       referrerpolicy="no-referrer-when-downgrade"
     />
 
-    <div v-else class="guest-words__inner">
+    <div v-if="!renderLyricsIframe" class="guest-words__inner">
       <v-icon class="guest-words__icon mb-4" color="success" size="72">mdi-check-decagram</v-icon>
 
       <h1 class="text-h4 font-weight-medium mb-3">הצטרפתם לשיתוף בהצלחה</h1>
@@ -97,7 +115,7 @@ onUnmounted(() => {
       </p>
 
       <div
-        v-if="sharingStore.guestLyricsLink && sharingStore.guestLyricsLink !== 'xxxxx'"
+        v-if="sharingStore.guestLyricsLink === 'xxxxx'"
         class="guest-words__link-panel mb-6 pa-4 text-start w-100 rounded-lg"
       >
         <div class="text-caption text-medium-emphasis mb-2">קישור מילות השיר</div>
@@ -159,6 +177,12 @@ onUnmounted(() => {
   min-height: 0;
   border: 0;
   display: block;
+}
+
+.guest-words__iframe-full--dark {
+  /* Best-effort dark mode for cross-origin iframe content. */
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.95);
+  background: #111;
 }
 
 .guest-words__inner {

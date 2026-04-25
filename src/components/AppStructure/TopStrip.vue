@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify'
 import Login from '@/components/Authentication/Login.vue'
 import Register from '@/components/Authentication/Register.vue'
 import { useUserStore } from '@/stores/UserStore'
+import { useSharingStore } from '@/stores/SharingStore'
 
 const { mdAndUp } = useDisplay()
 const drawer = ref(false)
@@ -13,6 +14,7 @@ const registrationOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const sharingStore = useSharingStore()
 
 const isAuthenticated = computed(() => Boolean(userStore.user?.isAuthenticated))
 const userFullName = computed(() => userStore.user?.fullName ?? '')
@@ -44,7 +46,16 @@ function onForgotPassword() {
 }
 
 function logout() {
+  sharingStore.clearGuestLyricsSession()
   userStore.logout()
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.clear()
+      sessionStorage.clear()
+    } catch {
+      // storage may be unavailable in restricted contexts
+    }
+  }
   drawer.value = false
   router.push({ name: 'home' })
 }

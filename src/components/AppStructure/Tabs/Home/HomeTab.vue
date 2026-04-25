@@ -24,6 +24,7 @@ const greetingLine = computed(() => {
 async function submitSharingCode() {
   const code = sharingCode.value.trim()
   if (!code) return
+  sharingStore.clearGuestLyricsSession()
   formError.value = ''
   submitting.value = true
   try {
@@ -56,12 +57,12 @@ onMounted(async () => {
     <div class="home-tab__inner">
       <h1 class="text-h5 mb-2">{{ greetingLine }}</h1>
       <p class="text-body-1 text-medium-emphasis mb-6">
-        כדי לצפות במילות השיר באירוע, הזינו את קוד השיתוף שקיבלתם מהמארגן.
+        כדי לצפות במילות השירים במהלך האירוע, הזינו את קוד השיתוף שקיבלתם מהמארגן. לידיעתכם, הקישור יהיה זמין דקות ספורות לפני תחילת האירוע.
       </p>
 
       <v-card variant="outlined" class="home-tab__card w-100">
         <v-card-text>
-          <v-alert v-if="formError" type="error" variant="tonal" class="mb-4 text-start home-tab__error" border="start" closable @click:close="formError = ''">
+          <v-alert v-if="formError" type="info" variant="tonal" class="mb-4 text-start home-tab__error" border="start" closable @click:close="formError = ''">
             <div class="text-body-1 font-weight-medium">{{ formError }}</div>
             <div class="text-body-2 mt-2 text-medium-emphasis">בדקו את הקוד ונסו שוב.</div>
           </v-alert>

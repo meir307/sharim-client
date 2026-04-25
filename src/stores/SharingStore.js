@@ -4,19 +4,54 @@ import { useUserStore, normalizeUserPlaylistsAndEmitCode } from './UserStore'
 
 /** Same-document concurrent dedupe (e.g. Vue dev Strict Mode double `onMounted`). */
 let guestRequestSharingInflight = null
+const GUEST_SESSION_STORAGE_KEY = 'guestSharingSession'
+
+function loadGuestSession() {
+  if (typeof window === 'undefined') {
+    return { guestLyricsLink: '', guestEmitCode: '' }
+  }
+  try {
+    const raw = localStorage.getItem(GUEST_SESSION_STORAGE_KEY)
+    if (!raw) return { guestLyricsLink: '', guestEmitCode: '' }
+    const parsed = JSON.parse(raw)
+    return {
+      guestLyricsLink: String(parsed?.guestLyricsLink ?? '').trim(),
+      guestEmitCode: String(parsed?.guestEmitCode ?? '').trim(),
+    }
+  } catch {
+    return { guestLyricsLink: '', guestEmitCode: '' }
+  }
+}
+
+function saveGuestSession(guestLyricsLink, guestEmitCode) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(
+    GUEST_SESSION_STORAGE_KEY,
+    JSON.stringify({
+      guestLyricsLink: String(guestLyricsLink ?? '').trim(),
+      guestEmitCode: String(guestEmitCode ?? '').trim(),
+    }),
+  )
+}
 
 export const useSharingStore = defineStore('SharingStore', {
-  state: () => ({
+  state: () => {
+    const restored = loadGuestSession()
+    return {
     /** Full or relative URL returned by `sharing/guestResolve` after a guest submits a sharing code. */
-    guestLyricsLink: '',
+    guestLyricsLink: restored.guestLyricsLink,
     /** Last sharing code used successfully (for display). */
-    guestEmitCode: '',
-  }),
+    guestEmitCode: restored.guestEmitCode,
+    }
+  },
 
   actions: {
     clearGuestLyricsSession() {
       this.guestLyricsLink = ''
       this.guestEmitCode = ''
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(GUEST_SESSION_STORAGE_KEY)
+      }
     },
 
     /**
@@ -46,6 +81,7 @@ export const useSharingStore = defineStore('SharingStore', {
           )
           this.guestLyricsLink = String(data?.link ?? '').trim()
           this.guestEmitCode = trimmed
+          saveGuestSession(this.guestLyricsLink, this.guestEmitCode)
           return { link: this.guestLyricsLink }
         } catch (error) {
           const resData = error?.response?.data ?? {}
@@ -72,18 +108,24 @@ export const useSharingStore = defineStore('SharingStore', {
      */
     async refreshLyrics() {
       const userStore = useUserStore()
+      if (!String(this.guestEmitCode ?? '').trim()) return
       
       try {
         const { data } = await axios.post(
           userStore.apiUrl + 'sharing/refreshLyrics',
           { emitCode: this.guestEmitCode },
         )
-        if (this.guestLyricsLink != String(data?.link ?? '').trim())
-        {
-          this.guestLyricsLink = String(data?.link ?? '').trim()
+        const nextLink = String(data?.link ?? '').trim()
+        if (this.guestLyricsLink != nextLink) {
+          this.guestLyricsLink = nextLink
+          saveGuestSession(this.guestLyricsLink, this.guestEmitCode)
         }
       } catch {
-        /* poll: leave previous link */
+        // If sharing is stopped/invalid, clear stale lyrics so guest page exits iframe mode.
+        if (this.guestLyricsLink !== '') {
+          this.guestLyricsLink = ''
+          saveGuestSession(this.guestLyricsLink, this.guestEmitCode)
+        }
       }
     },
 
@@ -122,6 +164,7 @@ export const useSharingStore = defineStore('SharingStore', {
      * @returns {Promise<{ sharingActive: boolean } | null>} `null` if not logged in; otherwise the resolved guest-sharing flag after sync
      */
     async setGuestSharingActive(active) {
+   
       const userStore = useUserStore()
       if (!userStore.user || typeof userStore.user !== 'object' || !userStore.user.isAuthenticated) {
         return null

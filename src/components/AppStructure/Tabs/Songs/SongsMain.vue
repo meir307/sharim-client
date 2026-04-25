@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { useUserStore } from '@/stores/UserStore'
 import UpsertSong from './UpsertSong.vue'
@@ -131,6 +131,43 @@ const showLinkPreviewDialog = ref(false)
 const linkPreviewUrl = ref('')
 const linkPreviewTitle = ref('')
 const linkPreviewCords = ref(null)
+const DISPLAY_SINGLE_SONG_SESSION_KEY = 'displaySingleSongSession'
+
+function loadSingleSongSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(DISPLAY_SINGLE_SONG_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || !parsed.show) return null
+    const linkUrl = String(parsed.linkUrl ?? '').trim()
+    if (!linkUrl) return null
+    return {
+      linkUrl,
+      title: String(parsed.title ?? '').trim(),
+      cords: parsed.cords ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
+function saveSingleSongSession() {
+  if (typeof window === 'undefined') return
+  if (showLinkPreviewDialog.value && String(linkPreviewUrl.value ?? '').trim()) {
+    localStorage.setItem(
+      DISPLAY_SINGLE_SONG_SESSION_KEY,
+      JSON.stringify({
+        show: true,
+        linkUrl: String(linkPreviewUrl.value ?? '').trim(),
+        title: String(linkPreviewTitle.value ?? '').trim(),
+        cords: linkPreviewCords.value ?? null,
+      }),
+    )
+    return
+  }
+  localStorage.removeItem(DISPLAY_SINGLE_SONG_SESSION_KEY)
+}
 
 function pickCordsFromSongRow(row) {
   if (!row || typeof row !== 'object') return null
@@ -147,13 +184,32 @@ function openLinkPreview(item) {
     id != null ? userStore.songs.find((s) => String(s?.id) === String(id)) : null
   linkPreviewCords.value = pickCordsFromSongRow(fromStore) ?? pickCordsFromSongRow(item)
   showLinkPreviewDialog.value = true
+  saveSingleSongSession()
 }
 
 function onLinkPreviewAfterLeave() {
   linkPreviewUrl.value = ''
   linkPreviewTitle.value = ''
   linkPreviewCords.value = null
+  saveSingleSongSession()
 }
+
+watch(
+  [showLinkPreviewDialog, linkPreviewUrl, linkPreviewTitle, linkPreviewCords],
+  () => {
+    saveSingleSongSession()
+  },
+  { deep: true },
+)
+
+onMounted(() => {
+  const restored = loadSingleSongSession()
+  if (!restored) return
+  linkPreviewUrl.value = restored.linkUrl
+  linkPreviewTitle.value = restored.title || restored.linkUrl
+  linkPreviewCords.value = restored.cords
+  showLinkPreviewDialog.value = true
+})
 </script>
 
 <template>

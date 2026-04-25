@@ -13,6 +13,35 @@ const displaySongPlaylist = ref(null)
 /** Stable key: playlist `id` or fallback `i:{index}` */
 const selectedPlaylistKey = ref(null)
 
+const DISPLAY_SONG_SESSION_KEY = 'displaySongPlaylistSession'
+
+function loadDisplaySongSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(DISPLAY_SONG_SESSION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || !parsed.show) return null
+    const playlist = parsed.playlist
+    if (!playlist || typeof playlist !== 'object') return null
+    return playlist
+  } catch {
+    return null
+  }
+}
+
+function saveDisplaySongSession() {
+  if (typeof window === 'undefined') return
+  if (showDisplaySong.value && displaySongPlaylist.value) {
+    localStorage.setItem(
+      DISPLAY_SONG_SESSION_KEY,
+      JSON.stringify({ show: true, playlist: displaySongPlaylist.value }),
+    )
+    return
+  }
+  localStorage.removeItem(DISPLAY_SONG_SESSION_KEY)
+}
+
 function firstDefinedString(obj, keys) {
   if (!obj || typeof obj !== 'object') return ''
   for (const k of keys) {
@@ -122,10 +151,12 @@ async function onActivatePlaylist(playlist) {
   await ensureSongsLoaded()
   displaySongPlaylist.value = playlist && typeof playlist === 'object' ? { ...playlist } : null
   showDisplaySong.value = true
+  saveDisplaySongSession()
 }
 
 function onDisplaySongClosed() {
   displaySongPlaylist.value = null
+  saveDisplaySongSession()
 }
 
 async function onDeletePlaylist(playlist, index) {
@@ -167,8 +198,21 @@ async function ensureSongsLoaded() {
   }
 }
 
+watch(
+  [showDisplaySong, displaySongPlaylist],
+  () => {
+    saveDisplaySongSession()
+  },
+  { deep: true },
+)
+
 onMounted(() => {
   ensureSongsLoaded()
+  const restored = loadDisplaySongSession()
+  if (restored) {
+    displaySongPlaylist.value = restored
+    showDisplaySong.value = true
+  }
 })
 </script>
 
