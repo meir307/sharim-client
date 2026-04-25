@@ -14,6 +14,12 @@ const displaySongPlaylist = ref(null)
 const selectedPlaylistKey = ref(null)
 
 const DISPLAY_SONG_SESSION_KEY = 'displaySongPlaylistSession'
+const selectedSongsHeaders = [
+  { title: 'שם', key: 'name', sortable: true, minWidth: 120 },
+  { title: 'קטגוריה', key: 'categoryName', sortable: true, minWidth: 100 },
+  { title: 'אמן', key: 'artistName', sortable: true, minWidth: 100 },
+]
+const selectedSongsTableHeightPx = 420
 
 function loadDisplaySongSession() {
   if (typeof window === 'undefined') return null
@@ -119,18 +125,6 @@ function playlistSongTableRow(song) {
   return songRowForTable(song, categories.value, artists.value)
 }
 
-function playlistSongListTitle(song) {
-  return displaySongName(playlistSongTableRow(song))
-}
-
-function playlistSongListSubtitle(song) {
-  const row = playlistSongTableRow(song)
-  const art = String(row.artistName ?? '').trim()
-  const cat = String(row.categoryName ?? '').trim()
-  const bits = [art, cat].filter(Boolean)
-  return bits.length ? bits.join(' · ') : undefined
-}
-
 const selectedPlaylistSongs = computed(() => {
   const pl = selectedPlaylist.value
   if (!pl || typeof pl !== 'object') return []
@@ -138,6 +132,19 @@ const selectedPlaylistSongs = computed(() => {
   if (!Array.isArray(raw)) return []
   return raw.map(resolveSongEntry).filter(Boolean)
 })
+
+const selectedPlaylistSongsTableItems = computed(() =>
+  selectedPlaylistSongs.value.map((song, sIndex) => {
+    const row = playlistSongTableRow(song)
+    return {
+      ...row,
+      __rowKey: `${String(selectedPlaylistKey.value ?? 'none')}-${sIndex}`,
+      name: displaySongName(row),
+      categoryName: String(row.categoryName ?? '').trim() || '—',
+      artistName: String(row.artistName ?? '').trim() || '—',
+    }
+  }),
+)
 
 function selectPlaylist(playlist, index) {
   selectedPlaylistKey.value = playlistStableKey(playlist, index)
@@ -279,18 +286,22 @@ onMounted(() => {
         <div class="playlists-main__panel-head text-subtitle-2 text-medium-emphasis mb-2">שירים בפלייליסט</div>
         <v-card variant="outlined" class="playlists-main__card playlists-main__card--songs">
           <v-progress-linear v-if="songsLoading" indeterminate height="3" />
-          <v-list v-if="selectedPlaylist && selectedPlaylistSongs.length" density="comfortable" class="py-0">
-            <v-list-item
-              v-for="(song, sIndex) in selectedPlaylistSongs"
-              :key="`${selectedPlaylistKey}-${sIndex}`"
-              :title="playlistSongListTitle(song)"
-              :subtitle="playlistSongListSubtitle(song)"
-            >
-              <template #prepend>
-                <span class="playlists-main__song-index text-medium-emphasis">{{ sIndex + 1 }}.</span>
-              </template>
-            </v-list-item>
-          </v-list>
+          <v-data-table
+            v-if="selectedPlaylist && selectedPlaylistSongs.length"
+            class="playlists-main__songs-table"
+            :headers="selectedSongsHeaders"
+            :items="selectedPlaylistSongsTableItems"
+            :items-per-page="-1"
+            item-value="__rowKey"
+            density="compact"
+            hide-default-footer
+            fixed-header
+            :height="selectedSongsTableHeightPx"
+          >
+            <template #item.name="{ item }">
+              <span class="font-weight-medium">{{ item.name }}</span>
+            </template>
+          </v-data-table>
           <div
             v-else-if="selectedPlaylist && !selectedPlaylistSongs.length"
             class="playlists-main__empty text-body-2 text-medium-emphasis pa-6 text-center"
@@ -333,12 +344,10 @@ onMounted(() => {
 
 .playlists-main__card--songs {
   min-height: 240px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
 }
 
-.playlists-main__song-index {
-  min-width: 1.75rem;
-  font-variant-numeric: tabular-nums;
-}
 
 .playlists-main__empty {
   line-height: 1.45;

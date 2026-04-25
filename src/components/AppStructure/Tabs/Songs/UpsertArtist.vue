@@ -10,10 +10,12 @@
 
           <v-card-text>
             <v-text-field
+              ref="nameFieldRef"
               v-model="form.name"
               label="שם"
               :rules="[requiredRule]"
               required
+              @keydown.enter.prevent="onNameEnter"
             />
 
             <div class="popup-btn-row">
@@ -31,7 +33,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
 
 const props = defineProps({
@@ -49,6 +51,7 @@ const emit = defineEmits(['close-dialog', 'saved'])
 
 const userStore = useUserStore()
 const isSaving = ref(false)
+const nameFieldRef = ref(null)
 
 const form = reactive({
   id: null,
@@ -75,15 +78,27 @@ function applyArtistToForm(artist) {
 
 watch(
   () => [props.showDialog, props.editArtist],
-  ([showDialog]) => {
+  async ([showDialog]) => {
     if (!showDialog) return
     applyArtistToForm(props.editArtist)
+    await nextTick()
+    const el = nameFieldRef.value
+    if (typeof el?.focus === 'function') {
+      el.focus()
+    } else if (el?.$el) {
+      el.$el.querySelector?.('input')?.focus()
+    }
   },
   { immediate: true, deep: true },
 )
 
 function closeDialog() {
   emit('close-dialog')
+}
+
+function onNameEnter() {
+  if (isSaving.value) return
+  saveArtist()
 }
 
 async function saveArtist() {

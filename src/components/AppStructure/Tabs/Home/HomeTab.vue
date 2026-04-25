@@ -13,6 +13,14 @@ const sharingCode = ref('')
 const formError = ref('')
 const submitting = ref(false)
 
+function sanitizeDigits(value) {
+  return String(value ?? '').replace(/\D+/g, '')
+}
+
+function onSharingCodeInput(value) {
+  sharingCode.value = sanitizeDigits(value)
+}
+
 const greetingLine = computed(() => {
   const name = String(userStore.user?.fullName ?? '').trim()
   if (userStore.user?.isAuthenticated && name) {
@@ -77,8 +85,11 @@ onMounted(async () => {
             dir="ltr"
             hide-details="auto"
             autocomplete="off"
+            inputmode="numeric"
+            pattern="[0-9]*"
             :disabled="submitting"
             class="home-tab__code-field"
+            @update:model-value="onSharingCodeInput"
             @keyup.enter="submitSharingCode"
           />
           <v-btn

@@ -20,12 +20,10 @@
                   :rules="[requiredRule]"
                 />
 
-                <div class="upsert-playlist__list-head text-subtitle-2 text-medium-emphasis mb-1">
+                <div class="upsert-playlist__list-head text-subtitle-2 text-medium-emphasis mb-1 pt-4">
                   שירים נבחרים
                 </div>
-                <p class="upsert-playlist__reorder-hint text-caption text-medium-emphasis mb-1">
-                  לשינוי הסדר: השתמש בחיצים למעלה / למטה ליד כל שורה.
-                </p>
+                
                 <v-card variant="outlined" class="upsert-playlist__list-card">
                   <v-list v-if="selectedSongs.length" density="compact" class="py-0">
                     <v-list-item
@@ -75,14 +73,23 @@
               </v-col>
 
               <v-col cols="12" md="6" class="upsert-playlist__col-catalog">
-                <div class="upsert-playlist__list-head text-subtitle-2 text-medium-emphasis mb-1">
-                  כל השירים
-                </div>
+                
+                <v-text-field
+                  v-model="catalogSearchText"
+                  class="upsert-playlist__catalog-search mb-2"
+                  label="חיפוש שיר/אמן"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  hide-details
+                  prepend-inner-icon="mdi-magnify"
+                />
                 <v-card variant="outlined" class="upsert-playlist__catalog-card">
                   <v-data-table
                     class="upsert-playlist__catalog-table"
                     :headers="catalogHeaders"
-                    :items="catalogTableItems"
+                    :items="filteredCatalogTableItems"
+                    :items-per-page="-1"
                     :loading="songsLoading"
                     item-value="__rowKey"
                     density="compact"
@@ -166,6 +173,7 @@ const playlistName = ref('')
 const selectedSongs = ref([])
 const songsLoading = ref(false)
 const isSaving = ref(false)
+const catalogSearchText = ref('')
 
 const isUpdateMode = computed(() => {
   const p = props.editPlaylist
@@ -234,6 +242,17 @@ const catalogTableItems = computed(() => {
       return { ...row, __rowKey: songKey(row) }
     })
     .sort((a, b) => displaySongName(a).localeCompare(displaySongName(b), 'he'))
+})
+
+const filteredCatalogTableItems = computed(() => {
+  const list = Array.isArray(catalogTableItems.value) ? catalogTableItems.value : []
+  const q = String(catalogSearchText.value ?? '').trim().toLowerCase()
+  if (!q) return list
+  return list.filter((row) => {
+    const name = String(row?.name ?? '').toLowerCase()
+    const artist = String(row?.artistName ?? '').toLowerCase()
+    return name.includes(q) || artist.includes(q)
+  })
 })
 
 const catalogNoDataText = computed(() => {

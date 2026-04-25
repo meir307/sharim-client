@@ -11,6 +11,12 @@ import { useSongsMainList, useSongsMainActiveTitle, runDeleteCategoryConfirmed, 
 const userStore = useUserStore()
 const display = useDisplay()
 
+/** Same pattern as UpsertPlaylist catalog `v-data-table`: `fixed-header` + numeric `height` enables body scroll. */
+const songsTableHeightPx = computed(() => {
+  const h = Number(display.height?.value) || 800
+  return Math.min(Math.round(h * 0.68), 760)
+})
+
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
 const NAV_DRAWER_BREAKPOINT = 960
 
@@ -44,6 +50,7 @@ const artists = computed(() => {
 
 /** Fixed width for name column in categories / artists tables (px) — sync with scoped CSS */
 const entityNameColPx = 160
+const artistTableHeightPx = 420
 
 const entityTableHeaders = [
   {
@@ -131,7 +138,19 @@ const showLinkPreviewDialog = ref(false)
 const linkPreviewUrl = ref('')
 const linkPreviewTitle = ref('')
 const linkPreviewCords = ref(null)
+const songSearchText = ref('')
 const DISPLAY_SINGLE_SONG_SESSION_KEY = 'displaySingleSongSession'
+
+const filteredSongTableItems = computed(() => {
+  const list = Array.isArray(songsList.songTableItems) ? songsList.songTableItems : []
+  const q = String(songSearchText.value ?? '').trim().toLowerCase()
+  if (!q) return list
+  return list.filter((row) => {
+    const name = String(row?.name ?? '').toLowerCase()
+    const artist = String(row?.artistName ?? '').toLowerCase()
+    return name.includes(q) || artist.includes(q)
+  })
+})
 
 function loadSingleSongSession() {
   if (typeof window === 'undefined') return null
@@ -275,7 +294,17 @@ onMounted(() => {
               <v-spacer />
               <div class="songs-main__header-actions">
                 <template v-if="activeTab === 'songs'">
-                 
+                  <v-text-field
+                    v-model="songSearchText"
+                    label="חיפוש שיר/אמן"
+                    variant="solo-filled"
+                    density="compact"
+                    flat
+                    clearable
+                    hide-details
+                    prepend-inner-icon="mdi-magnify"
+                    class="songs-main__songs-search"
+                  />
                   <v-btn color="primary" class="add-btn" @click="onAddSong">
                     <v-icon start>mdi-plus</v-icon>
                     הוסף שיר
@@ -301,15 +330,18 @@ onMounted(() => {
             <v-tabs-window v-model="activeTab" class="songs-main__window">
               <v-tabs-window-item value="songs">
                 <div class="tiles-container songs-main__songs-table-wrap">
-                  <div class="songs-main__songs-table-inner">
+                  <v-card variant="outlined" class="songs-main__songs-table-card">
                     <v-data-table
                       class="songs-main__songs-table"
                       :headers="songTableHeaders"
-                      :items="songsList.songTableItems"
+                      :items="filteredSongTableItems"
+                      :items-per-page="-1"
                       :loading="songsLoading"
                       item-value="id"
                       density="comfortable"
                       hide-default-footer
+                      fixed-header
+                      :height="songsTableHeightPx"
                     >
                       <template #item.name="{ item }">
                         <a
@@ -341,7 +373,7 @@ onMounted(() => {
                         </div>
                       </template>
                     </v-data-table>
-                  </div>
+                  </v-card>
                 </div>
               </v-tabs-window-item>
               <v-tabs-window-item value="categories">
@@ -354,6 +386,7 @@ onMounted(() => {
                       class="songs-main__entity-table"
                       :headers="entityTableHeaders"
                       :items="categories"
+                      :items-per-page="-1"
                       item-value="id"
                       density="comfortable"
                       hide-default-footer
@@ -401,9 +434,12 @@ onMounted(() => {
                       class="songs-main__entity-table"
                       :headers="entityTableHeaders"
                       :items="artists"
+                      :items-per-page="-1"
                       item-value="id"
                       density="comfortable"
                       hide-default-footer
+                      fixed-header
+                      :height="artistTableHeightPx"
                     >
                       <template #colgroup>
                         <colgroup>
@@ -513,8 +549,8 @@ onMounted(() => {
   min-width: 0;
   gap: 16px;
   min-height: calc(100vh - 200px);
-  max-height: calc(100vh - 200px);
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .navigation-menu {
@@ -540,8 +576,8 @@ onMounted(() => {
   min-width: 0;
   width: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
-  height: 100%;
+  overflow-y: visible;
+  height: auto;
 }
 
 .songs-main__content-card {
@@ -574,6 +610,10 @@ onMounted(() => {
   /* Reserve space so header height stays similar when switching (menu + add vs single add) */
   min-width: 200px;
   min-height: 40px;
+}
+
+.songs-main__songs-search {
+  min-width: min(34vw, 280px);
 }
 
 .songs-main__tabs {
@@ -674,12 +714,11 @@ onMounted(() => {
   min-width: 0;
 }
 
-.songs-main__songs-table-inner {
+/* Match UpsertPlaylist `.upsert-playlist__catalog-card` — clip so VDataTable owns internal scroll */
+.songs-main__songs-table-card {
   width: 100%;
   max-width: 100%;
   border-radius: 8px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
   overflow: hidden;
 }
 

@@ -10,6 +10,7 @@
 
           <v-card-text >
             <v-text-field
+              ref="nameFieldRef"
               v-model="form.name"
               label="שם"
               :rules="[requiredRule]"
@@ -147,6 +148,7 @@ const emit = defineEmits(['close-dialog', 'saved'])
 
 const userStore = useUserStore()
 const isSaving = ref(false)
+const nameFieldRef = ref(null)
 const cordsError = ref('')
 const cordsFile = ref(null)
 /** Server-side attachment when editing; kept unless replaced or cleared. */
@@ -366,6 +368,13 @@ watch(
     if (!open) return
     await nextTick()
     applySongToForm(props.editSong)
+    await nextTick()
+    const el = nameFieldRef.value
+    if (typeof el?.focus === 'function') {
+      el.focus()
+    } else if (el?.$el) {
+      el.$el.querySelector?.('input')?.focus()
+    }
   },
   { flush: 'post', immediate: true },
 )
