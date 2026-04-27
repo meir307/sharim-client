@@ -209,6 +209,15 @@ function cordsTextFromSong(raw) {
 const cordsDisplayText = computed(() => cordsTextFromSong(displayCords.value))
 const showCordsPanel = computed(() => cordsDisplayText.value.trim().length > 0)
 
+/** User can hide chords from the title bar; iframe then uses full width (`shell--full`). */
+const cordsPanelUserVisible = ref(true)
+
+const showCordsInLayout = computed(() => showCordsPanel.value && cordsPanelUserVisible.value)
+
+watch(open, (isOpen) => {
+  if (isOpen) cordsPanelUserVisible.value = true
+})
+
 /** `rm=minimal` trims embed chrome; RTL inside the doc still comes from Google’s viewer (varies by browser). */
 function googleDocumentPreviewUrl(docId) {
   const u = new URL(`https://docs.google.com/document/d/${encodeURIComponent(docId)}/preview`)
@@ -229,6 +238,14 @@ function embedUrlForLinkPreview(url) {
     const u = new URL(s)
     const host = u.hostname.replace(/^www\./i, '').toLowerCase()
     if (host !== 'docs.google.com') return s
+
+    /** File → Share → Publish to web: `/document/d/…/pub` (often better RTL/layout than `/preview`). */
+    const pathNoTrail = u.pathname.replace(/\/+$/, '')
+    if (pathNoTrail.endsWith('/pub')) {
+      u.searchParams.set('embedded', 'true')
+      return u.toString()
+    }
+
     for (const [re, toUrl] of GOOGLE_EMBED) {
       const m = u.pathname.match(re)
       if (m) return toUrl(m[1])
@@ -319,7 +336,11 @@ function close() {
   >
     <v-card class="display-song__card" rounded="lg">
       <v-card-title class="popup-title display-song__head">
-        <div v-if="showPlaylistHeader" class="display-song__head-inner display-song__head-inner--playlist">
+        <div
+          v-if="showPlaylistHeader"
+          class="display-song__head-inner display-song__head-inner--playlist"
+          :class="{ 'display-song__head-inner--cords-toggle': showCordsPanel }"
+        >
           <div class="display-song__head-playlist-row">
             <v-btn
               icon="mdi-skip-next"
@@ -353,26 +374,61 @@ function close() {
               @click="playlistNext"
             />
           </div>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            class="display-song__head-close"
-            aria-label="סגור"
-            @click="close"
-          />
+          <div class="display-song__head-actions-end">
+            <v-btn
+              v-if="showCordsPanel"
+              variant="text"
+              density="comfortable"
+              :icon="cordsPanelUserVisible ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+              :aria-label="cordsPanelUserVisible ? 'הסתר אקורדים' : 'הצג אקורדים'"
+              :aria-pressed="cordsPanelUserVisible ? 'true' : 'false'"
+              class="display-song__head-cords-toggle"
+              @click="cordsPanelUserVisible = !cordsPanelUserVisible"
+            />
+            <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
+          </div>
         </div>
         <div
           v-else-if="hasPlaylist"
           class="display-song__head-row display-song__head-inner w-100 min-w-0"
+          :class="{ 'display-song__head-inner--cords-toggle': showCordsPanel }"
         >
           <span class="display-song__head-title-center text-truncate min-w-0 font-weight-medium">{{
             displayPlaylistName
           }}</span>
-          <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
+          <div class="display-song__head-actions-end">
+            <v-btn
+              v-if="showCordsPanel"
+              variant="text"
+              density="comfortable"
+              :icon="cordsPanelUserVisible ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+              :aria-label="cordsPanelUserVisible ? 'הסתר אקורדים' : 'הצג אקורדים'"
+              :aria-pressed="cordsPanelUserVisible ? 'true' : 'false'"
+              class="display-song__head-cords-toggle"
+              @click="cordsPanelUserVisible = !cordsPanelUserVisible"
+            />
+            <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
+          </div>
         </div>
-        <div v-else class="display-song__head-row display-song__head-inner w-100 min-w-0">
+        <div
+          v-else
+          class="display-song__head-row display-song__head-inner w-100 min-w-0"
+          :class="{ 'display-song__head-inner--cords-toggle': showCordsPanel }"
+        >
           <span class="display-song__head-title-center text-truncate min-w-0">{{ displaySongTitle }}</span>
-          <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
+          <div class="display-song__head-actions-end">
+            <v-btn
+              v-if="showCordsPanel"
+              variant="text"
+              density="comfortable"
+              :icon="cordsPanelUserVisible ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+              :aria-label="cordsPanelUserVisible ? 'הסתר אקורדים' : 'הצג אקורדים'"
+              :aria-pressed="cordsPanelUserVisible ? 'true' : 'false'"
+              class="display-song__head-cords-toggle"
+              @click="cordsPanelUserVisible = !cordsPanelUserVisible"
+            />
+            <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
+          </div>
         </div>
       </v-card-title>
       <v-divider />
@@ -384,10 +440,10 @@ function close() {
           אין שירים בפלייליסט זה.
         </div>
         <div v-else class="display-song__body" dir="ltr">
-          <div v-if="showCordsPanel" class="display-song__cords-wrap" dir="rtl">
-            <pre class="display-song__cords-pre text-body-2" dir="rtl">{{ cordsDisplayText }}</pre>
+          <div v-if="showCordsInLayout" class="display-song__cords-wrap" dir="rtl">
+            <pre class="display-song__cords-pre" dir="rtl">{{ cordsDisplayText }}</pre>
           </div>
-          <div class="display-song__shell" :class="{ 'display-song__shell--full': !showCordsPanel }">
+          <div class="display-song__shell" :class="{ 'display-song__shell--full': !showCordsInLayout }">
             <div ref="iframeScrollerRef" class="display-song__iframe-scroller">
               <iframe
                 v-if="open && displayLinkUrl"
@@ -448,10 +504,22 @@ function close() {
   flex-shrink: 0;
   margin-bottom: 0;
   padding-inline: 12px 4px;
+  /*
+   * Vuetify `.v-card-title` defaults to nowrap + overflow hidden + ellipsis.
+   * This dialog uses a nested title + absolutely positioned actions; those
+   * defaults clip/over-constrain the row when there is no playlist header.
+   */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .display-song__head-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .display-song__head-inner {
@@ -459,6 +527,10 @@ function close() {
   box-sizing: border-box;
   width: 100%;
   padding-inline: 44px;
+}
+
+.display-song__head-inner--cords-toggle {
+  padding-inline-end: 88px;
 }
 
 .display-song__head-inner--playlist {
@@ -501,16 +573,25 @@ function close() {
 }
 
 .display-song__head-title-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   display: block;
-  width: 100%;
   text-align: center;
 }
 
-.display-song__head-close {
+.display-song__head-actions-end {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   inset-inline-end: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.display-song__head-close {
+  flex-shrink: 0;
 }
 
 .display-song__card-text {
@@ -558,10 +639,14 @@ function close() {
   font-family: inherit;
   color: #e6e6e6;
   background-color: #1b1b1b;
-  font-size: 21px;
+  /* Fixed size: avoid Vuetify fluid typography / mobile text-size heuristics shrinking lyrics */
+  font-size: 21px !important;
+  line-height: 1.45;
   direction: rtl;
   text-align: right;
   unicode-bidi: plaintext;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .display-song__shell {
@@ -585,6 +670,8 @@ function close() {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   direction: rtl;
+  container-type: inline-size;
+  container-name: display-song-iframe-scroller;
 }
 
 .display-song__iframe {
@@ -593,6 +680,13 @@ function close() {
   height: min(320vh, 9600px);
   min-height: min(180vh, 4800px);
   border: 0;
+}
+
+/* Narrow text panel: give Google Docs a minimum layout width so embedded text does not shrink as much (scroll horizontally). */
+@container display-song-iframe-scroller (max-width: 540px) {
+  .display-song__iframe {
+    min-width: 540px;
+  }
 }
 
 .display-song__iframe--dark {
