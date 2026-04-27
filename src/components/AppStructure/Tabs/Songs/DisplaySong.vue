@@ -197,19 +197,27 @@ function cordsTextFromSong(raw) {
   if (typeof raw === 'object' && raw !== null) {
     const direct =
       raw.cordsText ?? raw.CordsText ?? raw.cords_text ?? raw.Cords_Text
-    if (direct != null) return String(direct)
+    if (direct != null && String(direct).trim() !== '') return String(direct)
     const inner = raw.cords ?? raw.Cords
     if (inner != null && inner !== raw) return cordsTextFromSong(inner)
-    return JSON.stringify(raw)
+    // No displayable chord text (avoid showing "{}" / metadata-only objects)
+    return ''
   }
   return ''
 }
 
 const cordsDisplayText = computed(() => cordsTextFromSong(displayCords.value))
-const showCordsPanel = computed(() => cordsDisplayText.value.trim() !== '')
+const showCordsPanel = computed(() => cordsDisplayText.value.trim().length > 0)
+
+/** `rm=minimal` trims embed chrome; RTL inside the doc still comes from Google’s viewer (varies by browser). */
+function googleDocumentPreviewUrl(docId) {
+  const u = new URL(`https://docs.google.com/document/d/${encodeURIComponent(docId)}/preview`)
+  u.searchParams.set('rm', 'minimal')
+  return u.toString()
+}
 
 const GOOGLE_EMBED = [
-  [/\/document\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/document/d/${id}/preview`],
+  [/\/document\/d\/([a-zA-Z0-9_-]+)/, (id) => googleDocumentPreviewUrl(id)],
   [/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/spreadsheets/d/${id}/htmlview`],
   [/\/presentation\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/presentation/d/${id}/embed`],
 ]
@@ -311,47 +319,60 @@ function close() {
   >
     <v-card class="display-song__card" rounded="lg">
       <v-card-title class="popup-title display-song__head">
-        <div v-if="showPlaylistHeader" class="display-song__head-playlist">
-          <div class="display-song__head-playlist__title text-truncate min-w-0">
-            <span class="font-weight-medium">{{ displaySongTitle }}</span>
-            <span class="text-body-2 text-medium-emphasis mx-1">  מתוך פלייליסט </span>
-            <span class="font-weight-medium">{{ displayPlaylistName }}</span>
-          </div>
-          <div class="display-song__head-nav-center">
-            <span class="text-caption text-medium-emphasis tabular-nums">
-              {{ playlistSongIndex + 1 }}/{{ resolvedPlaylistSongs.length }}
-            </span>
-            <v-btn
-              icon="mdi-skip-previous"
-              variant="text"
-              density="comfortable"
-              :disabled="playlistSongIndex <= 0"
-              aria-label="שיר קודם"
-              @click="playlistPrev"
-            />
+        <div v-if="showPlaylistHeader" class="display-song__head-inner display-song__head-inner--playlist">
+          <div class="display-song__head-playlist-row">
             <v-btn
               icon="mdi-skip-next"
               variant="text"
               density="comfortable"
+              class="display-song__head-nav-btn flex-shrink-0"
+              :disabled="playlistSongIndex <= 0"
+              aria-label="שיר קודם"
+              @click="playlistPrev"
+            />
+            <div class="display-song__head-playlist-title-wrap min-w-0">
+              <div class="display-song__head-playlist__title display-song__head-playlist__title-line">
+                
+                <span class="text-truncate min-w-0 display-song__head-playlist-names">
+                  <span class="font-weight-medium">{{ displaySongTitle }}</span>
+                  <span class="text-body-2 text-medium-emphasis mx-1"> מתוך פלייליסט </span>
+                  <span class="font-weight-medium">{{ displayPlaylistName }}</span>
+                </span>
+                <span class="text-caption text-medium-emphasis tabular-nums display-song__head-playlist-count flex-shrink-0">
+                  ({{ playlistSongIndex + 1 }}/{{ resolvedPlaylistSongs.length }})
+                </span>
+              </div>
+            </div>
+            <v-btn
+              icon="mdi-skip-previous"
+              variant="text"
+              density="comfortable"
+              class="display-song__head-nav-btn flex-shrink-0"
               :disabled="playlistSongIndex >= resolvedPlaylistSongs.length - 1"
               aria-label="שיר הבא"
               @click="playlistNext"
             />
           </div>
-          <div class="display-song__head-playlist__actions-end">
-            <v-btn icon="mdi-close" variant="text" aria-label="סגור" @click="close" />
-          </div>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            class="display-song__head-close"
+            aria-label="סגור"
+            @click="close"
+          />
         </div>
         <div
           v-else-if="hasPlaylist"
-          class="display-song__head-row d-flex align-center gap-2 w-100 min-w-0"
+          class="display-song__head-row display-song__head-inner w-100 min-w-0"
         >
-          <span class="text-truncate flex-grow-1 min-w-0 font-weight-medium">{{ displayPlaylistName }}</span>
-          <v-btn icon="mdi-close" variant="text" class="flex-shrink-0" aria-label="סגור" @click="close" />
+          <span class="display-song__head-title-center text-truncate min-w-0 font-weight-medium">{{
+            displayPlaylistName
+          }}</span>
+          <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
         </div>
-        <div v-else class="display-song__head-row d-flex align-center gap-2 w-100 min-w-0">
-          <span class="text-truncate flex-grow-1 min-w-0">{{ displaySongTitle }}</span>
-          <v-btn icon="mdi-close" variant="text" class="flex-shrink-0" aria-label="סגור" @click="close" />
+        <div v-else class="display-song__head-row display-song__head-inner w-100 min-w-0">
+          <span class="display-song__head-title-center text-truncate min-w-0">{{ displaySongTitle }}</span>
+          <v-btn icon="mdi-close" variant="text" class="display-song__head-close" aria-label="סגור" @click="close" />
         </div>
       </v-card-title>
       <v-divider />
@@ -363,10 +384,10 @@ function close() {
           אין שירים בפלייליסט זה.
         </div>
         <div v-else class="display-song__body" dir="ltr">
-          <div v-if="showCordsPanel" class="display-song__cords-wrap">
+          <div v-if="showCordsPanel" class="display-song__cords-wrap" dir="rtl">
             <pre class="display-song__cords-pre text-body-2" dir="rtl">{{ cordsDisplayText }}</pre>
           </div>
-          <div class="display-song__shell">
+          <div class="display-song__shell" :class="{ 'display-song__shell--full': !showCordsPanel }">
             <div ref="iframeScrollerRef" class="display-song__iframe-scroller">
               <iframe
                 v-if="open && displayLinkUrl"
@@ -374,6 +395,8 @@ function close() {
                 class="display-song__iframe display-song__iframe--dark"
                 :src="embedSrc"
                 :title="displaySongTitle"
+                dir="rtl"
+                lang="he"
                 referrerpolicy="no-referrer-when-downgrade"
               />
             </div>
@@ -421,6 +444,7 @@ function close() {
 }
 
 .display-song__head {
+  position: relative;
   flex-shrink: 0;
   margin-bottom: 0;
   padding-inline: 12px 4px;
@@ -430,30 +454,63 @@ function close() {
   box-sizing: border-box;
 }
 
-/* Title | (counter + prev + next) centered | close — equal outer columns keep nav in the middle */
-.display-song__head-playlist {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+.display-song__head-inner {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding-inline: 44px;
+}
+
+.display-song__head-inner--playlist {
+  text-align: center;
+}
+
+.display-song__head-playlist-row {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 20px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
-.display-song__head-nav-center {
+.display-song__head-playlist-title-wrap {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 140px);
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 2px;
-  flex-wrap: nowrap;
-  justify-self: center;
+  text-align: center;
 }
 
-.display-song__head-playlist__actions-end {
+.display-song__head-playlist__title-line {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
+  max-width: 100%;
+}
+
+.display-song__head-playlist-names {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.display-song__head-title-center {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.display-song__head-close {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  inset-inline-end: 0;
 }
 
 .display-song__card-text {
@@ -476,38 +533,49 @@ function close() {
 }
 
 .display-song__cords-wrap {
-  flex: 0 0 clamp(220px, 36vw, 420px);
-  max-width: 45%;
+  flex: 1 1 50%;
+  max-width: 50%;
   min-width: 0;
   height: 100%;
   overflow: auto;
   box-sizing: border-box;
   padding: 16px;
   border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  
+  background: #111;
+  direction: rtl;
+  text-align: right;
 }
 
 .display-song__cords-pre {
   margin: 0;
   padding: 12px 16px;
+  min-height: 100%;
   box-sizing: border-box;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 6px;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
-  color: rgb(var(--v-theme-on-surface));
-  background-color: rgb(236, 220, 149);
+  color: #e6e6e6;
+  background-color: #1b1b1b;
   font-size: 21px;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
 }
 
 .display-song__shell {
-  flex: 1 1 auto;
+  flex: 1 1 50%;
+  max-width: 50%;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.display-song__shell--full {
+  flex: 1 1 auto;
+  max-width: 100%;
 }
 
 .display-song__iframe-scroller {
@@ -516,6 +584,7 @@ function close() {
   min-width: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  direction: rtl;
 }
 
 .display-song__iframe {
@@ -532,17 +601,27 @@ function close() {
   background: #111;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 600px) {
   .display-song__body {
     flex-direction: column;
   }
 
+  /* DOM order is cords then iframe; stack with text/iframe on top */
+  .display-song__shell {
+    order: 1;
+    flex: 1 1 auto;
+    max-width: 100%;
+    width: 100%;
+  }
+
   .display-song__cords-wrap {
+    order: 2;
     flex: 0 0 auto;
     max-width: 100%;
     max-height: min(32vh, 280px);
     border-inline-end: none;
-    border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-bottom: none;
+    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   }
 
   .display-song__iframe {

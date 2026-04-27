@@ -88,7 +88,7 @@ watch(
         <v-list-item
           :to="{ name: 'playlists' }"
           prepend-icon="mdi-calendar-star"
-          title="אירועים"
+          title="פליליסטים"
           rounded="lg"
         />
         <v-list-item
@@ -135,6 +135,18 @@ watch(
       aria-label="פתיחת תפריט ניווט"
       @click="drawer = true"
     />
+
+    <v-chip
+      v-if="!mdAndUp && isAuthenticated && sharingActive"
+      color="error"
+      variant="flat"
+      size="small"
+      prepend-icon="mdi-broadcast"
+      class="top-strip__sharing-chip top-strip__sharing-chip--compact flex-shrink-0 ms-1"
+      aria-label="שיתוף פעיל"
+    >
+      <span class="sr-only">שיתוף פעיל</span>
+    </v-chip>
 
     <div v-if="mdAndUp" class="top-strip__brand d-flex align-center flex-shrink-0">
       <v-app-bar-title class="top-strip__title">Sharim</v-app-bar-title>
@@ -283,5 +295,21 @@ watch(
 
 .top-strip__sharing-tab-dot {
   opacity: 0.95;
+}
+
+.top-strip__sharing-chip--compact {
+  padding-inline: 8px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>
