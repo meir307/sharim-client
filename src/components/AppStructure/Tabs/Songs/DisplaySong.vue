@@ -10,6 +10,8 @@ const props = defineProps({
   linkUrl: { type: String, default: '' },
   songTitle: { type: String, default: '' },
   cords: { type: [Object, String], default: null },
+  /** Plain lyrics/body when stored on the song (or passed from parent); skips iframe when non-empty. */
+  bodyText: { type: String, default: '' },
   /** When set, dialog shows this playlist’s songs (first on open); use prev/next in the header. */
   playlist: { type: Object, default: null },
 })
@@ -258,10 +260,189 @@ function embedUrlForLinkPreview(url) {
 
 const embedSrc = computed(() => embedUrlForLinkPreview(displayLinkUrl.value))
 
+/** Optional lyrics stored on the song object (API may supply any of these keys). */
+const BODY_TEXT_KEYS = [
+  'lyricsText',
+  'LyricsText',
+  'lyrics',
+  'Lyrics',
+  'body',
+  'Body',
+  'songText',
+  'SongText',
+]
+
+const storedBodyText = computed(() => {
+  const p = String(props.bodyText ?? '').trim()
+  if (p) return p
+  const song = activePlaylistSong.value
+  if (!song || typeof song !== 'object') return ''
+  return firstDefinedString(song, BODY_TEXT_KEYS)
+})
+
+/** Standard Google Doc file id from `/document/d/{id}/…` (not `/d/e/` publish ids). */
+function googleDocsDocumentIdFromUrl(url) {
+  const s = String(url ?? '').trim()
+  if (!s) return null
+  try {
+    const u = new URL(s)
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
+    if (host !== 'docs.google.com') return null
+    const m = u.pathname.match(/\/document\/d\/([a-zA-Z0-9_-]+)/)
+    return m ? m[1] : null
+  } catch {
+    return null
+  }
+}
+
+const remotePlainText = ref('')
+/** Sanitized head styles + body HTML from `export?format=html` (no iframe). */
+const remoteDocHtml = ref('')
+const remotePlainLoading = ref(false)
+let remotePlainAbort = null
+
+const linkPanePlainText = computed(() => {
+  if (storedBodyText.value) return storedBodyText.value
+  return remotePlainText.value
+})
+
+const linkPaneHtml = computed(() => String(remoteDocHtml.value ?? '').trim())
+
+function looksLikeGoogleLoginOrBlockedHtml(html) {
+  const h = String(html ?? '').slice(0, 12000).toLowerCase()
+  if (h.includes('accounts.google.com')) return true
+  if (h.includes('sign in</title>') || h.includes('sign_in')) return true
+  if (h.includes('access denied') && h.includes('google')) return true
+  return false
+}
+
+/**
+ * Turn Google’s full HTML export into a fragment for `v-html`: keep linked styles,
+ * drop scripts/iframes, strip inline event handlers. Content is treated as trusted
+ * user-owned docs; a hostile doc could still use CSS tricks — same trust as iframe.
+ */
+function buildGoogleDocDisplayHtml(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== 'string') return ''
+  if (looksLikeGoogleLoginOrBlockedHtml(rawHtml)) return ''
+
+  let doc
+  try {
+    doc = new DOMParser().parseFromString(rawHtml, 'text/html')
+  } catch {
+    return ''
+  }
+
+  doc.querySelectorAll('script').forEach((el) => el.remove())
+  doc.querySelectorAll('iframe, object, embed').forEach((el) => el.remove())
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const n = attr.name.toLowerCase()
+      if (n.startsWith('on')) el.removeAttribute(attr.name)
+    }
+    if (el.tagName === 'A') {
+      const href = el.getAttribute('href')
+      if (href != null && /^\s*javascript:/i.test(href)) el.removeAttribute('href')
+    }
+  })
+
+  const headBits = [...doc.head.querySelectorAll('link[rel="stylesheet"], style')]
+    .map((el) => el.outerHTML)
+    .join('')
+
+  const bodyHtml = doc.body?.innerHTML?.trim() ?? ''
+  if (!bodyHtml) return ''
+  return headBits + bodyHtml
+}
+
+async function tryLoadGoogleDocRemoteContent() {
+  remotePlainAbort?.abort()
+  remotePlainText.value = ''
+  remoteDocHtml.value = ''
+  remotePlainLoading.value = false
+
+  if (!open.value) {
+    remotePlainAbort = null
+    return
+  }
+  if (storedBodyText.value) {
+    remotePlainAbort = null
+    return
+  }
+  const id = googleDocsDocumentIdFromUrl(displayLinkUrl.value)
+  if (!id) {
+    remotePlainAbort = null
+    return
+  }
+
+  const ac = new AbortController()
+  remotePlainAbort = ac
+  remotePlainLoading.value = true
+
+  const base = `https://docs.google.com/document/d/${encodeURIComponent(id)}`
+  const htmlUrl = `${base}/export?format=html`
+  const txtUrl = `${base}/export?format=txt`
+
+  try {
+    try {
+      const resH = await fetch(htmlUrl, { credentials: 'omit', mode: 'cors', signal: ac.signal })
+      if (resH.ok) {
+        const raw = await resH.text()
+        const built = buildGoogleDocDisplayHtml(raw)
+        if (built) {
+          remoteDocHtml.value = built
+          return
+        }
+      }
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e
+    }
+
+    if (remotePlainAbort !== ac) return
+
+    const resT = await fetch(txtUrl, { credentials: 'omit', mode: 'cors', signal: ac.signal })
+    if (!resT.ok) throw new Error(String(resT.status))
+    const text = await resT.text()
+    const start = text.trimStart()
+    if (start.startsWith('<!') || start.toLowerCase().startsWith('<html')) throw new Error('html')
+    remotePlainText.value = text
+  } catch (e) {
+    if (e?.name !== 'AbortError') remotePlainText.value = ''
+  } finally {
+    if (remotePlainAbort === ac) {
+      remotePlainLoading.value = false
+      remotePlainAbort = null
+    }
+  }
+}
+
+const showPlainTextLoading = computed(
+  () =>
+    remotePlainLoading.value &&
+    !storedBodyText.value &&
+    Boolean(googleDocsDocumentIdFromUrl(displayLinkUrl.value)),
+)
+
+watch(
+  () => [open.value, displayLinkUrl.value, playlistSongIndex.value, storedBodyText.value],
+  () => {
+    void tryLoadGoogleDocRemoteContent()
+  },
+)
+
+const showLinkIframe = computed(
+  () =>
+    open.value &&
+    Boolean(String(displayLinkUrl.value ?? '').trim()) &&
+    Boolean(String(embedSrc.value ?? '').trim()) &&
+    !linkPaneHtml.value &&
+    !String(linkPanePlainText.value ?? '').trim() &&
+    !remotePlainLoading.value,
+)
+
 const SCROLL_LINE_PX = 1
 const SCROLL_INTERVAL_MS = 130
 
-const iframeScrollerRef = ref(null)
+const linkBodyScrollerRef = ref(null)
 let scrollTimer = null
 
 function stopAutoScroll() {
@@ -272,7 +453,7 @@ function stopAutoScroll() {
 }
 
 function scrollWrapperOneLine() {
-  const wrap = iframeScrollerRef.value
+  const wrap = linkBodyScrollerRef.value
   if (!wrap) return
   const max = Math.max(0, wrap.scrollHeight - wrap.clientHeight)
   if (max <= 0) return
@@ -290,14 +471,21 @@ function startAutoScroll() {
   scrollTimer = setInterval(scrollWrapperOneLine, SCROLL_INTERVAL_MS)
 }
 
-watch([open, embedSrc, playlistSongIndex], async ([isOpen, src]) => {
-  stopAutoScroll()
-  if (!isOpen || !String(src ?? '').trim()) return
-  await nextTick()
-  const sc = iframeScrollerRef.value
-  if (sc) sc.scrollTop = 0
-  startAutoScroll()
-})
+watch(
+  () => [open.value, embedSrc.value, linkPanePlainText.value, linkPaneHtml.value, playlistSongIndex.value],
+  async ([isOpen]) => {
+    stopAutoScroll()
+    if (!isOpen) return
+    const hasPlain = Boolean(String(linkPanePlainText.value ?? '').trim())
+    const hasHtml = Boolean(linkPaneHtml.value)
+    const hasEmbed = Boolean(String(embedSrc.value ?? '').trim()) && Boolean(displayLinkUrl.value.trim())
+    if (!hasPlain && !hasHtml && !hasEmbed) return
+    await nextTick()
+    const sc = linkBodyScrollerRef.value
+    if (sc) sc.scrollTop = 0
+    startAutoScroll()
+  },
+)
 
 function notifyUpdateActiveLink() {
   const url = String(displayLinkUrl.value ?? '').trim()
@@ -313,7 +501,10 @@ watch(
   { immediate: true },
 )
 
-onBeforeUnmount(stopAutoScroll)
+onBeforeUnmount(() => {
+  stopAutoScroll()
+  remotePlainAbort?.abort()
+})
 
 function close() {
   open.value = false
@@ -444,9 +635,25 @@ function close() {
             <pre class="display-song__cords-pre" dir="rtl">{{ cordsDisplayText }}</pre>
           </div>
           <div class="display-song__shell" :class="{ 'display-song__shell--full': !showCordsInLayout }">
-            <div ref="iframeScrollerRef" class="display-song__iframe-scroller">
+            <div ref="linkBodyScrollerRef" class="display-song__iframe-scroller">
+              <div v-if="showPlainTextLoading" class="display-song__link-body-loading">
+                <v-progress-circular indeterminate color="primary" size="48" width="4" />
+              </div>
+              <div
+                v-else-if="linkPaneHtml"
+                class="display-song__link-html-doc"
+                dir="rtl"
+                lang="he"
+                v-html="linkPaneHtml"
+              />
+              <pre
+                v-else-if="linkPanePlainText"
+                class="display-song__link-plain-pre"
+                dir="rtl"
+                lang="he"
+              >{{ linkPanePlainText }}</pre>
               <iframe
-                v-if="open && displayLinkUrl"
+                v-else-if="showLinkIframe"
                 :key="`${embedSrc}#${playlistSongIndex}`"
                 class="display-song__iframe display-song__iframe--dark"
                 :src="embedSrc"
@@ -610,7 +817,7 @@ function close() {
   min-height: 0;
   min-width: 0;
   width: 100%;
-  background: rgb(var(--v-theme-surface));
+  background: #111;
 }
 
 .display-song__cords-wrap {
@@ -656,6 +863,7 @@ function close() {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: #111;
 }
 
 .display-song__shell--full {
@@ -672,6 +880,109 @@ function close() {
   direction: rtl;
   container-type: inline-size;
   container-name: display-song-iframe-scroller;
+  background: #111;
+}
+
+.display-song__link-body-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #111;
+}
+
+.display-song__link-plain-pre {
+  margin: 0;
+  padding: 12px 16px;
+  min-height: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 21px !important;
+  line-height: 1.45;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  color: #e6e6e6;
+  background-color: #1b1b1b;
+}
+
+/* Google HTML export: dark canvas (match `.display-song__link-plain-pre`); Google’s CSS may set light colors inline */
+.display-song__link-html-doc {
+  margin: 12px 16px 16px;
+  padding: 20px 24px 28px;
+  min-height: calc(100% - 28px);
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background-color: #1b1b1b;
+  color: #e6e6e6;
+  text-align: right !important;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Export HTML often sets inline alignment / dark text — force RTL + light body copy */
+.display-song__link-html-doc :deep(p),
+.display-song__link-html-doc :deep(span),
+.display-song__link-html-doc :deep(li),
+.display-song__link-html-doc :deep(h1),
+.display-song__link-html-doc :deep(h2),
+.display-song__link-html-doc :deep(h3),
+.display-song__link-html-doc :deep(h4),
+.display-song__link-html-doc :deep(h5),
+.display-song__link-html-doc :deep(h6),
+.display-song__link-html-doc :deep(td),
+.display-song__link-html-doc :deep(th),
+.display-song__link-html-doc :deep(div) {
+  text-align: right !important;
+  direction: rtl;
+  color: #e6e6e6 !important;
+  background-color: transparent !important;
+}
+
+.display-song__link-html-doc :deep(a) {
+  color: #90caf9 !important;
+}
+
+.display-song__link-html-doc :deep(hr) {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.display-song__link-html-doc :deep(ul),
+.display-song__link-html-doc :deep(ol) {
+  padding-inline-start: 0;
+  padding-inline-end: 24px;
+  margin: 0.5em 0;
+}
+
+.display-song__link-html-doc :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.display-song__link-html-doc :deep(table) {
+  max-width: 100%;
+  border-collapse: collapse;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+  color: #e6e6e6 !important;
+}
+
+.display-song__link-html-doc :deep(table),
+.display-song__link-html-doc :deep(td),
+.display-song__link-html-doc :deep(th) {
+  border-color: rgba(255, 255, 255, 0.16) !important;
 }
 
 .display-song__iframe {

@@ -138,6 +138,7 @@ const showLinkPreviewDialog = ref(false)
 const linkPreviewUrl = ref('')
 const linkPreviewTitle = ref('')
 const linkPreviewCords = ref(null)
+const linkPreviewBodyText = ref('')
 const songSearchText = ref('')
 const DISPLAY_SINGLE_SONG_SESSION_KEY = 'displaySingleSongSession'
 
@@ -165,6 +166,7 @@ function loadSingleSongSession() {
       linkUrl,
       title: String(parsed.title ?? '').trim(),
       cords: parsed.cords ?? null,
+      bodyText: String(parsed.bodyText ?? '').trim(),
     }
   } catch {
     return null
@@ -181,6 +183,7 @@ function saveSingleSongSession() {
         linkUrl: String(linkPreviewUrl.value ?? '').trim(),
         title: String(linkPreviewTitle.value ?? '').trim(),
         cords: linkPreviewCords.value ?? null,
+        bodyText: String(linkPreviewBodyText.value ?? '').trim(),
       }),
     )
     return
@@ -193,6 +196,27 @@ function pickCordsFromSongRow(row) {
   return row.cords ?? row.Cords ?? null
 }
 
+const BODY_TEXT_KEYS = [
+  'lyricsText',
+  'LyricsText',
+  'lyrics',
+  'Lyrics',
+  'body',
+  'Body',
+  'songText',
+  'SongText',
+]
+
+function bodyTextFromSong(song) {
+  if (!song || typeof song !== 'object') return ''
+  for (const k of BODY_TEXT_KEYS) {
+    if (!(k in song)) continue
+    const v = song[k]
+    if (v != null && String(v).trim() !== '') return String(v).trim()
+  }
+  return ''
+}
+
 function openLinkPreview(item) {
   const url = String(item?.linkUrl ?? '').trim()
   if (!url) return
@@ -202,6 +226,7 @@ function openLinkPreview(item) {
   const fromStore =
     id != null ? userStore.songs.find((s) => String(s?.id) === String(id)) : null
   linkPreviewCords.value = pickCordsFromSongRow(fromStore) ?? pickCordsFromSongRow(item)
+  linkPreviewBodyText.value = bodyTextFromSong(fromStore) || bodyTextFromSong(item)
   showLinkPreviewDialog.value = true
   saveSingleSongSession()
 }
@@ -210,11 +235,12 @@ function onLinkPreviewAfterLeave() {
   linkPreviewUrl.value = ''
   linkPreviewTitle.value = ''
   linkPreviewCords.value = null
+  linkPreviewBodyText.value = ''
   saveSingleSongSession()
 }
 
 watch(
-  [showLinkPreviewDialog, linkPreviewUrl, linkPreviewTitle, linkPreviewCords],
+  [showLinkPreviewDialog, linkPreviewUrl, linkPreviewTitle, linkPreviewCords, linkPreviewBodyText],
   () => {
     saveSingleSongSession()
   },
@@ -513,6 +539,7 @@ onMounted(() => {
       :link-url="linkPreviewUrl"
       :song-title="linkPreviewTitle"
       :cords="linkPreviewCords"
+      :body-text="linkPreviewBodyText"
       @closed="onLinkPreviewAfterLeave"
     />
   </div>
