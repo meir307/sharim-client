@@ -15,6 +15,7 @@ const selectedPlaylistKey = ref(null)
 
 const DISPLAY_SONG_SESSION_KEY = 'displaySongPlaylistSession'
 const selectedSongsHeaders = [
+  { title: '', key: 'listOrder', sortable: false, width: 56, align: 'center' },
   { title: 'שם', key: 'name', sortable: false, minWidth: 120 },
   { title: 'קטגוריה', key: 'categoryName', sortable: false, minWidth: 100 },
   { title: 'אמן', key: 'artistName', sortable: false, minWidth: 100 },
@@ -108,6 +109,14 @@ function resolveSongEntry(entry) {
   return typeof entry === 'object' ? entry : null
 }
 
+/** Count of resolvable songs (same rules as the selected-playlist table). */
+function playlistSongCount(playlist) {
+  if (!playlist || typeof playlist !== 'object') return 0
+  const raw = playlist.songs ?? playlist.Songs ?? playlist.songList ?? playlist.items ?? []
+  if (!Array.isArray(raw)) return 0
+  return raw.map(resolveSongEntry).filter(Boolean).length
+}
+
 const categories = computed(() =>
   Array.isArray(userStore.user?.categories) ? userStore.user.categories : [],
 )
@@ -140,6 +149,7 @@ const selectedPlaylistSongsTableItems = computed(() =>
     return {
       ...row,
       __rowKey: `${String(selectedPlaylistKey.value ?? 'none')}-${sIndex}`,
+      listOrder: sIndex + 1,
       name: displaySongName(row),
       categoryName: String(row.categoryName ?? '').trim() || '—',
       artistName: String(row.artistName ?? '').trim() || '—',
@@ -243,6 +253,9 @@ onMounted(() => {
               <v-list-item-title class="text-body-1 font-weight-medium">
                 {{ playlistDisplayName(pl) }}
               </v-list-item-title>
+              <v-list-item-subtitle class="text-caption text-medium-emphasis tabular-nums">
+                {{ playlistSongCount(pl) }} שירים
+              </v-list-item-subtitle>
               <template #append>
                 <div class="playlists-main__playlist-actions" @click.stop>
                   <v-btn
@@ -284,7 +297,7 @@ onMounted(() => {
 
       <!-- Second column — songs of selected playlist (left in RTL) -->
       <v-col cols="12" md="7" class="playlists-main__col-songs">
-        <div class="playlists-main__panel-head text-subtitle-2 text-medium-emphasis mb-2">שירים בפלייליסט</div>
+        <div class="playlists-main__panel-head text-subtitle-2 text-medium-emphasis mb-2">שירים בפלייליסט {{ playlistDisplayName(selectedPlaylist) }}</div>
         <div class="playlists-main__songs-panel">
           <v-progress-linear v-if="songsLoading" indeterminate height="3" />
           <v-card v-if="selectedPlaylist && selectedPlaylistSongs.length" variant="outlined" class="playlists-main__songs-table-card">
@@ -299,6 +312,9 @@ onMounted(() => {
               fixed-header
               :height="selectedSongsTableHeightPx"
             >
+              <template #item.listOrder="{ item }">
+                <span class="tabular-nums text-medium-emphasis">{{ item.listOrder }}</span>
+              </template>
               <template #item.name="{ item }">
                 <span class="font-weight-medium">{{ item.name }}</span>
               </template>

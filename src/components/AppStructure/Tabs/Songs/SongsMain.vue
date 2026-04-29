@@ -127,8 +127,8 @@ function openNavDrawer() {
   navDrawerOpen.value = true
 }
 
-const songsList = useSongsMainList(userStore, categories, artists, songsLoading);
-const activeTitle = useSongsMainActiveTitle(activeTab);
+const songsList = useSongsMainList(userStore, categories, artists, songsLoading)
+const activeTitle = useSongsMainActiveTitle(activeTab, userStore)
 
 async function onSongSaved() {
   await songsList.loadSongs()

@@ -21,7 +21,7 @@
                 />
 
                 <div class="upsert-playlist__list-head text-subtitle-2 text-medium-emphasis mb-1 pt-4">
-                  שירים נבחרים
+                  שירים נבחרים ({{ selectedSongs.length }} שירים)
                 </div>
                 
                 <v-card variant="outlined" class="upsert-playlist__list-card">

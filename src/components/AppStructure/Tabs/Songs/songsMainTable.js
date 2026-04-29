@@ -123,9 +123,25 @@ const SONGS_MAIN_TAB_TITLES = Object.freeze({
   artists: 'אמנים',
 })
 
-/** Header title for the active songs / categories / artists tab. */
-export function useSongsMainActiveTitle(activeTab) {
-  return computed(() => SONGS_MAIN_TAB_TITLES[activeTab.value] ?? 'שירים')
+/**
+ * Header title for the active songs / categories / artists tab, with the current list size.
+ * @param {import('vue').Ref<string>} activeTab
+ * @param {ReturnType<import('@/stores/UserStore').useUserStore>} userStore
+ */
+export function useSongsMainActiveTitle(activeTab, userStore) {
+  return computed(() => {
+    const tab = activeTab.value
+    const base = SONGS_MAIN_TAB_TITLES[tab] ?? 'שירים'
+    let count = 0
+    if (tab === 'songs') {
+      count = Array.isArray(userStore.songs) ? userStore.songs.length : 0
+    } else if (tab === 'categories') {
+      count = Array.isArray(userStore.user?.categories) ? userStore.user.categories.length : 0
+    } else if (tab === 'artists') {
+      count = Array.isArray(userStore.user?.artists) ? userStore.user.artists.length : 0
+    }
+    return `${base} - ${count}`
+  })
 }
 
 export function runDeleteCategoryConfirmed(userStore, category) {
