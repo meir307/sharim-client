@@ -20,8 +20,8 @@ const selectedSongsHeaders = [
   { title: 'קטגוריה', key: 'categoryName', sortable: false, minWidth: 100 },
   { title: 'אמן', key: 'artistName', sortable: false, minWidth: 100 },
 ]
-// Leave space for the loading bar and card chrome so native scrollbar controls are not clipped.
-const selectedSongsTableHeightPx = 396
+// Fixed-header table body height (smaller panel — more room for chrome / less vertical dominance).
+const selectedSongsTableHeightPx = 305 
 
 function loadDisplaySongSession() {
   if (typeof window === 'undefined') return null
@@ -355,13 +355,13 @@ onMounted(() => {
 }
 
 .playlists-main__card {
-  min-height: 200px;
-  max-height: min(60vh, 520px);
+  min-height: 160px;
+  max-height: min(44vh, 396px);
   overflow-y: auto;
 }
 
 .playlists-main__songs-panel {
-  min-height: 240px;
+  min-height: 200px;
 }
 
 .playlists-main__songs-table-card {
