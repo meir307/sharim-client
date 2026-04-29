@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sharim">
+  <defs>
+    <clipPath id="mic-head">
+      <circle cx="32" cy="20" r="9.5"/>
+    </clipPath>
+    <pattern id="grille" width="3" height="3" patternUnits="userSpaceOnUse">
+      <circle cx="1.4" cy="1.4" r="0.55" fill="#111"/>
+    </pattern>
+  </defs>
+  <g
+    fill="none"
+    stroke="#111"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    transform="rotate(-38 32 32)"
+  >
+    <!-- Grille (stipple) + head -->
+    <rect x="22" y="10" width="20" height="20" fill="url(#grille)" clip-path="url(#mic-head)" stroke="none"/>
+    <circle cx="32" cy="20" r="9.5"/>
+    <line x1="24" y1="18" x2="40" y2="18"/>
+    <line x1="24" y1="22" x2="40" y2="22"/>
+    <!-- Neck -->
+    <rect x="27.5" y="28" width="9" height="5" rx="1"/>
+    <!-- Handle -->
+    <rect x="26" y="33" width="12" height="21" rx="2.5"/>
+    <line x1="32" y1="37" x2="32" y2="50"/>
+    <!-- Base cap -->
+    <rect x="27" y="54" width="10" height="7" rx="2"/>
+  </g>
+</svg>

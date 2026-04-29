@@ -149,7 +149,9 @@ watch(
     </v-chip>
 
     <div v-if="mdAndUp" class="top-strip__brand d-flex align-center flex-shrink-0">
-      <v-app-bar-title class="top-strip__title">Sharim</v-app-bar-title>
+      <img src="/sharim-icon.svg" alt="שרים" class="top-strip__brand-icon" width="34" height="48">
+      <v-app-bar-title class="top-strip__title">שרים</v-app-bar-title>
+      
       <v-chip
         v-if="isAuthenticated && sharingActive"
         color="error"
@@ -243,6 +245,12 @@ watch(
   gap: 10px;
   align-items: center;
   margin-inline: 8px;
+}
+
+.top-strip__brand-icon {
+  display: block;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 
 .top-strip__brand :deep(.v-toolbar-title) {
