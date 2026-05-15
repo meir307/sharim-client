@@ -86,9 +86,15 @@ watch(
           rounded="lg"
         />
         <v-list-item
-          :to="{ name: 'playlists' }"
+          :to="{ name: 'settings' }"
+          prepend-icon="mdi-cog-outline"
+          title="הגדרות"
+          rounded="lg"
+        />
+        <v-list-item
+          :to="{ name: 'events' }"
           prepend-icon="mdi-calendar-star"
-          title="פליליסטים"
+          title="אירועים"
           rounded="lg"
         />
         <v-list-item
@@ -182,9 +188,15 @@ watch(
       />
       <v-tab
         v-if="isAuthenticated"
-        :to="{ name: 'playlists' }"
-        text="פלייליסטים"
-        value="playlists"
+        :to="{ name: 'settings' }"
+        text="הגדרות"
+        value="settings"
+      />
+      <v-tab
+        v-if="isAuthenticated"
+        :to="{ name: 'events' }"
+        text="אירועים"
+        value="events"
       />
       <v-tab v-if="isAuthenticated" :to="{ name: 'sharing' }" value="sharing">
         <span class="top-strip__tab-sharing d-inline-flex align-center">
@@ -263,7 +275,7 @@ watch(
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  max-width: min(100% - 16rem, 30rem);
+  max-width: min(100% - 16rem, 40rem);
 }
 
 .top-strip__tabs--guest {

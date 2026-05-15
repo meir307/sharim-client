@@ -30,15 +30,31 @@ const router = createRouter({
     },
     {
       path: '/playlists',
-      name: 'playlists',
+      redirect: { name: 'settings' },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
       meta: { requiresAuth: true },
-      component: () => import('@/components/AppStructure/Tabs/Playlists/PlaylistsTab.vue'),
+      component: () => import('@/components/AppStructure/Tabs/Settings/SettingsTab.vue'),
+    },
+    {
+      path: '/events',
+      name: 'events',
+      meta: { requiresAuth: true },
+      component: () => import('@/components/AppStructure/Tabs/Events/EventsTab.vue'),
     },
     {
       path: '/sharing',
       name: 'sharing',
       meta: { requiresAuth: true },
       component: () => import('@/components/AppStructure/Tabs/Sharing/SharingMain.vue'),
+    },
+    {
+      path: '/guest/event/:shareCode',
+      name: 'guest-event',
+      meta: { requiresAuth: false, guestFullscreen: true },
+      component: () => import('@/components/AppStructure/Tabs/Events/GuestEventPage.vue'),
     },
   ],
 })

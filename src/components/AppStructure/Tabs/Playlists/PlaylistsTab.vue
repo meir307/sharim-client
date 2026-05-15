@@ -1,35 +1,10 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useDisplay } from 'vuetify'
+import { ref } from 'vue'
 import PlaylistsMain from './playlists/PlaylistsMain.vue'
 import UpsertPlaylist from './playlists/UpsertPlaylist.vue'
-import EventsListMain from './events/EventsListMain.vue'
-
-/** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
-const NAV_DRAWER_BREAKPOINT = 960
-
-const display = useDisplay()
-const activeSubTab = ref('playlists')
-const navDrawerOpen = ref(false)
-
-const showNavInDrawer = computed(() => NAV_DRAWER_BREAKPOINT > (display.width?.value ?? 0))
-
-watch(activeSubTab, () => {
-  if (showNavInDrawer.value) {
-    navDrawerOpen.value = false
-  }
-})
 
 const showUpsertPlaylistDialog = ref(false)
 const editPlaylist = ref(null)
-
-const activeTitle = computed(() =>
-  activeSubTab.value === 'playlists' ? 'פלייליסטים' : 'אירועים',
-)
-
-function openNavDrawer() {
-  navDrawerOpen.value = true
-}
 
 function onAddPlaylist() {
   editPlaylist.value = null
@@ -50,107 +25,32 @@ function onPlaylistSaved() {
   editPlaylist.value = null
   showUpsertPlaylistDialog.value = false
 }
-
-function onAddEvent() {
-  // TODO: open create event flow
-}
 </script>
 
 <template>
   <div class="playlists-tab">
-    <v-navigation-drawer
-      v-if="showNavInDrawer"
-      v-model="navDrawerOpen"
-      temporary
-      location="start"
-      width="260"
-      class="playlists-tab__nav-drawer"
-    >
-      <v-card class="navigation-card playlists-tab__nav-drawer-card" elevation="0" variant="flat">
-        <v-tabs
-          v-model="activeSubTab"
-          direction="vertical"
-          class="playlists-tab__tabs"
-          bg-color="transparent"
-          color="primary"
-          slider-color="primary"
-          density="comfortable"
-        >
-          <v-tab value="events" prepend-icon="mdi-calendar-star" text="אירועים" class="text-none" />
-          <v-tab value="playlists" prepend-icon="mdi-playlist-music" text="פלייליסטים" class="text-none" />
-         
-        </v-tabs>
-      </v-card>
-    </v-navigation-drawer>
-
     <div class="content-wrapper">
-      <aside class="navigation-menu d-none d-md-block">
-        <v-card class="navigation-card" elevation="0" variant="flat">
-          <v-tabs
-            v-model="activeSubTab"
-            direction="vertical"
-            class="playlists-tab__tabs"
-            bg-color="transparent"
-            color="primary"
-            slider-color="primary"
-            density="comfortable"
-          >
-            <v-tab value="events" prepend-icon="mdi-calendar-star" text="אירועים" class="text-none" />
-            <v-tab value="playlists" prepend-icon="mdi-playlist-music" text="פלייליסטים" class="text-none" />
-            
-          </v-tabs>
-        </v-card>
-      </aside>
-
       <div class="content-area">
         <v-card class="modern-card playlists-tab__content-card" elevation="0">
           <v-card-title class="modern-title playlists-tab__card-title">
             <div class="title-container">
-              <v-btn
-                v-if="showNavInDrawer"
-                class="playlists-tab__nav-open"
-                icon="mdi-menu"
-                variant="text"
-                density="comfortable"
-                aria-label="תפריט ניווט"
-                @click="openNavDrawer"
-              ></v-btn>
-              <h2 class="title-text">{{ activeTitle }}</h2>
+              <h2 class="title-text">פלייליסטים</h2>
               <v-spacer />
               <div class="playlists-tab__header-actions">
-                <template v-if="activeSubTab === 'playlists'">
-                  <v-btn color="primary" class="add-btn" @click="onAddPlaylist">
-                    <v-icon start>mdi-plus</v-icon>
-                    הוסף פלייליסט
-                  </v-btn>
-                </template>
-                <template v-else-if="activeSubTab === 'events'">
-                  <v-btn color="primary" class="add-btn" @click="onAddEvent">
-                    <v-icon start>mdi-plus</v-icon>
-                    הוסף אירוע
-                  </v-btn>
-                </template>
+                <v-btn color="primary" class="add-btn" @click="onAddPlaylist">
+                  <v-icon start>mdi-plus</v-icon>
+                  הוסף פלייליסט
+                </v-btn>
               </div>
             </div>
           </v-card-title>
 
           <v-card-text class="pa-0">
-            <v-tabs-window v-model="activeSubTab" class="playlists-tab__window">
-              <v-tabs-window-item value="playlists">
-                <div class="tiles-container playlists-tab__panel-wrap">
-                  <div class="playlists-tab__panel-inner">
-                    <PlaylistsMain @edit-playlist="onEditPlaylistFromList" />
-                  </div>
-                </div>
-              </v-tabs-window-item>
-              <v-tabs-window-item value="events">
-                <div class="tiles-container playlists-tab__panel-wrap">
-                  <div class="playlists-tab__panel-inner">
-                    <EventsListMain />
-                  </div>
-                </div>
-              </v-tabs-window-item>
-            </v-tabs-window>
+            <div class="tiles-container playlists-tab__panel-wrap">
+              <div class="playlists-tab__panel-inner">
+                <PlaylistsMain @edit-playlist="onEditPlaylistFromList" />
+              </div>
+            </div>
           </v-card-text>
         </v-card>
       </div>
@@ -198,24 +98,6 @@ function onAddEvent() {
   overflow: hidden;
 }
 
-.navigation-menu {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  flex: 0 0 auto;
-  flex-shrink: 0;
-  width: 250px;
-  z-index: 10;
-}
-
-.navigation-card {
-  width: 100%;
-  padding: 8px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 6px;
-}
-
 .content-area {
   flex: 1;
   min-width: 0;
@@ -241,10 +123,6 @@ function onAddEvent() {
   align-items: center;
 }
 
-.playlists-tab__nav-open {
-  flex-shrink: 0;
-}
-
 .playlists-tab__header-actions {
   display: flex;
   align-items: center;
@@ -255,51 +133,15 @@ function onAddEvent() {
   min-height: 40px;
 }
 
-.playlists-tab__tabs {
-  width: 100%;
-}
-
-.playlists-tab__tabs :deep(.v-tab) {
-  justify-content: flex-start;
-}
-
-.playlists-tab__window :deep(.v-window__container) {
-  min-height: 200px;
-}
-
-.playlists-tab__window :deep(.v-window-item) {
-  min-height: 200px;
-}
-
-.playlists-tab__window :deep(.tiles-container) {
-  min-height: 200px;
-}
-
 @media (max-width: 960px) {
   .content-wrapper {
-    flex-direction: row;
     max-height: none;
     min-height: auto;
-  }
-
-  .navigation-menu {
-    display: none !important;
   }
 
   .content-area {
     overflow-y: visible;
   }
-}
-
-.playlists-tab__nav-drawer-card {
-  height: 100%;
-  border-radius: 0;
-  border: none;
-}
-
-.playlists-tab__nav-drawer :deep(.v-navigation-drawer__content) {
-  display: flex;
-  flex-direction: column;
 }
 
 .playlists-tab__panel-wrap {
