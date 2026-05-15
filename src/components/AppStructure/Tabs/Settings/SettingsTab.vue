@@ -72,6 +72,13 @@ function onPlaylistSaved() {
 function onAddFeedbackQuestion() {
   feedbackQuestionsRef.value?.addQuestion()
 }
+
+function onSaveFeedbackQuestions(questions) {
+  defaultFeedbackQuestions.value = Array.isArray(questions)
+    ? questions.map((q) => ({ ...q }))
+    : []
+  // Persist when API is available
+}
 </script>
 
 <template>
@@ -157,12 +164,13 @@ function onAddFeedbackQuestion() {
             </div>
             <div
               v-else-if="activeSection === 'feedback-questions'"
-              class="tiles-container tab-panel-wrap"
+              class="tiles-container tab-panel-wrap tab-panel-wrap--fill"
             >
-              <div class="tab-panel-inner">
+              <div class="tab-panel-inner tab-panel-inner--fill">
                 <FeedbackQuestions
                   ref="feedbackQuestionsRef"
                   v-model="defaultFeedbackQuestions"
+                  @save="onSaveFeedbackQuestions"
                 />
               </div>
             </div>

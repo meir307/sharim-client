@@ -41,8 +41,9 @@
   width: 100%;
   min-width: 0;
   gap: 16px;
-  min-height: calc(100vh - 200px);
+  height: calc(100vh - 200px);
   max-height: calc(100vh - 200px);
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -60,9 +61,12 @@
   flex: 1;
   min-width: 0;
   width: 100%;
+  min-height: 0;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-area--visible {
@@ -74,8 +78,37 @@
   height: auto;
 }
 
-.tab-content-card {
-  min-height: 100%;
+.modern-card.tab-content-card,
+.tab-content-card.v-card {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.modern-card.tab-content-card > .v-card-title,
+.tab-content-card.v-card > .v-card-title {
+  flex-shrink: 0;
+}
+
+.modern-card.tab-content-card > .v-card-text,
+.tab-content-card.v-card > .v-card-text {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.modern-card.tab-content-card > .v-card-text > .tiles-container.tab-panel-wrap--fill,
+.tab-content-card.v-card > .v-card-text > .tiles-container.tab-panel-wrap--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .tab-content-card--overflow-visible {
@@ -116,14 +149,43 @@
   min-width: 0;
 }
 
+.tab-panel-wrap--fill,
+.tiles-container.tab-panel-wrap--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .tab-panel-inner {
   width: 100%;
   max-width: 100%;
   border-radius: 8px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgb(var(--v-theme-surface));
-  overflow: hidden;
+  overflow: visible;
   padding: 16px;
+}
+
+.tab-panel-inner.tab-panel-inner--scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-panel-wrap--fill > .tab-panel-inner.tab-panel-inner--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .tab-placeholder {
