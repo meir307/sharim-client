@@ -1,0 +1,157 @@
+/* Shared layout for top-level tab views (Events, Settings, Songs, Sharing, EventDetail) */
+
+.tab-page {
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  margin-top: -16px;
+  padding-inline: 12px;
+  padding-top: 16px;
+}
+
+@media (min-width: 600px) {
+  .tab-page {
+    margin-top: -24px;
+    padding-inline: 16px;
+    padding-top: 24px;
+  }
+}
+
+.tab-page--detail {
+  margin-top: -14px;
+  padding-top: 10px;
+}
+
+@media (min-width: 600px) {
+  .tab-page--detail {
+    margin-top: -22px;
+    padding-top: 10px;
+  }
+}
+
+.tab-page--detail .event-detail__toolbar {
+  padding-top: 0;
+  padding-bottom: 6px;
+}
+
+.content-wrapper {
+  display: flex;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+  min-height: calc(100vh - 200px);
+  max-height: calc(100vh - 200px);
+  overflow: hidden;
+}
+
+.content-wrapper--scroll-free {
+  max-height: none;
+  overflow: visible;
+}
+
+.content-wrapper--in-detail {
+  min-height: calc(100vh - 280px);
+  max-height: calc(100vh - 280px);
+}
+
+.content-area {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.content-area--visible {
+  overflow: visible;
+}
+
+.content-area--scroll-free {
+  overflow-y: visible;
+  height: auto;
+}
+
+.tab-content-card {
+  min-height: 100%;
+}
+
+.tab-content-card--overflow-visible {
+  overflow: visible;
+}
+
+.tab-content-card--overflow-visible .v-card-text {
+  overflow: visible;
+}
+
+.tab-card-title {
+  display: flex !important;
+  align-items: center;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.tab-card-title .title-container {
+  width: 100%;
+  align-items: center;
+}
+
+.tab-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.tab-header-actions--wide {
+  min-width: 200px;
+}
+
+.tab-panel-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.tab-panel-inner {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgb(var(--v-theme-surface));
+  overflow: hidden;
+  padding: 16px;
+}
+
+.tab-placeholder {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-nav-open {
+  flex-shrink: 0;
+}
+
+@media (max-width: 960px) {
+  .content-wrapper {
+    max-height: none;
+    min-height: auto;
+  }
+
+  .content-area {
+    overflow-y: visible;
+  }
+
+  .content-wrapper--mobile-row {
+    flex-direction: row;
+  }
+
+  .tab-nav-menu--hide-on-mobile {
+    display: none !important;
+  }
+}

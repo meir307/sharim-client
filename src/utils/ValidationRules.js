@@ -11,9 +11,6 @@ export const noSpaces = (v) => {
   if (!v) return true
   return !/\s/.test(v) || 'לא יכול להכיל רווחים'
 }
-export const hasNumber = (v) => /\d/.test(v) || 'הסיסמה חייבת להכיל לפחות ספרה אחת'
-export const hasLetter = (v) => /[a-zA-Z]/.test(v) || 'הסיסמה חייבת להכיל לפחות אות אחת באנגלית'
-
 export const fullNameHebrewPattern = (v) =>
   /^[א-ת'" ]+$/.test(v) || 'השם חייב להכיל רק אותיות בעברית, גרש וגרשיים ורווחים'
 export const fullNameHebrewWords = (v) => {

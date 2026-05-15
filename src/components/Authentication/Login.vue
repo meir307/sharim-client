@@ -106,7 +106,7 @@ export default {
 
 <style scoped>
 .forgot-password-link {
-  color: #1976d2;
+  color: rgb(var(--v-theme-primary));
   text-decoration: none;
   font-size: 0.875rem;
   cursor: pointer;

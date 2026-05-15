@@ -12,7 +12,7 @@ const guestFullscreen = computed(() => Boolean(route.meta?.guestFullscreen))
 </script>
 
 <template>
-  <v-app dir="rtl" :class="{ 'app--guest-fullscreen': guestFullscreen }">
+  <v-app dir="rtl" theme="dark" :class="{ 'app--guest-fullscreen': guestFullscreen }">
     <TopStrip v-if="!guestFullscreen" />
     <v-main class="app-main" :class="{ 'app-main--guest-fullscreen': guestFullscreen }">
       <v-container

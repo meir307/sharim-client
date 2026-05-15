@@ -158,10 +158,10 @@ function setBroadcast(mode) {
       temporary
       location="start"
       width="260"
-      class="event-detail__nav-drawer"
+      class="tab-nav-drawer"
     >
-      <v-card class="navigation-card event-detail__nav-drawer-card" elevation="0" variant="flat">
-        <v-list class="event-detail__nav-list py-2" density="comfortable" nav>
+      <v-card class="navigation-card tab-nav-drawer-card" elevation="0" variant="flat">
+        <v-list class="tab-nav-list py-2" density="comfortable" nav>
           <v-list-item
             v-for="item in NAV_ITEMS"
             :key="item.id"
@@ -193,11 +193,11 @@ function setBroadcast(mode) {
       </v-btn>
     </div>
 
-    <div class="content-wrapper">
+    <div class="content-wrapper content-wrapper--in-detail">
       <!-- RTL (dir=rtl): aside first in row → physical right -->
-      <aside class="event-detail__nav-menu d-none d-md-block">
-        <v-card class="navigation-card event-detail__nav-card" elevation="0" variant="flat">
-          <v-list class="event-detail__nav-list py-2" density="comfortable" nav>
+      <aside class="tab-nav-menu d-none d-md-block">
+        <v-card class="navigation-card" elevation="0" variant="flat">
+          <v-list class="tab-nav-list py-2" density="comfortable" nav>
             <v-list-item
               v-for="item in NAV_ITEMS"
               :key="item.id"
@@ -214,12 +214,12 @@ function setBroadcast(mode) {
       </aside>
 
       <div class="content-area">
-        <v-card class="modern-card event-detail__content-card" elevation="0">
-          <v-card-title class="modern-title event-detail__card-title">
+        <v-card class="modern-card tab-content-card" elevation="0">
+          <v-card-title class="modern-title tab-card-title">
             <div class="title-container">
               <v-btn
                 v-if="showNavInDrawer"
-                class="event-detail__nav-open"
+                class="tab-nav-open"
                 icon="mdi-menu"
                 variant="text"
                 density="comfortable"
@@ -228,7 +228,7 @@ function setBroadcast(mode) {
               />
               <h2 class="title-text">{{ pageTitle }}</h2>
               <v-spacer />
-              <div v-if="activeSection === 'control'" class="event-detail__header-actions">
+              <div v-if="activeSection === 'control'" class="tab-header-actions">
                 <v-btn
                   color="primary"
                   class="add-btn"
@@ -242,8 +242,8 @@ function setBroadcast(mode) {
           </v-card-title>
 
           <v-card-text class="pa-0">
-            <div v-if="activeSection === 'control'" class="tiles-container event-detail__panel-wrap">
-              <div class="event-detail__panel-inner">
+            <div v-if="activeSection === 'control'" class="tiles-container tab-panel-wrap">
+              <div class="tab-panel-inner">
                 <div class="event-detail__meta text-body-2 text-medium-emphasis mb-4">
                   <v-icon size="14" class="me-1">mdi-calendar</v-icon>
                   {{ formatDate(ev.date) }}
@@ -312,8 +312,8 @@ function setBroadcast(mode) {
               </div>
             </div>
 
-            <div v-else-if="activeSection === 'voting'" class="tiles-container event-detail__panel-wrap">
-              <div class="event-detail__panel-inner">
+            <div v-else-if="activeSection === 'voting'" class="tiles-container tab-panel-wrap">
+              <div class="tab-panel-inner">
                 <div class="d-flex align-center justify-space-between mb-3">
                   <span class="text-body-2 text-medium-emphasis">
                     סה"כ {{ demoVotingResults.reduce((s, r) => s + r.votes, 0) }} הצבעות
@@ -347,8 +347,8 @@ function setBroadcast(mode) {
               </div>
             </div>
 
-            <div v-else-if="activeSection === 'feedback'" class="tiles-container event-detail__panel-wrap">
-              <div class="event-detail__panel-inner">
+            <div v-else-if="activeSection === 'feedback'" class="tiles-container tab-panel-wrap">
+              <div class="tab-panel-inner">
                 <div class="d-flex align-center justify-space-between mb-3">
                   <span class="text-body-2 text-medium-emphasis">תוצאות משוב</span>
                   <v-btn variant="text" size="small" prepend-icon="mdi-refresh" color="primary">רענן</v-btn>
@@ -468,103 +468,6 @@ function setBroadcast(mode) {
   border-radius: inherit;
 }
 
-.content-wrapper {
-  display: flex;
-  position: relative;
-  width: 100%;
-  min-width: 0;
-  gap: 16px;
-  min-height: calc(100vh - 280px);
-  max-height: calc(100vh - 280px);
-  overflow: hidden;
-}
-
-.content-area {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.event-detail__nav-menu {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  flex: 0 0 auto;
-  flex-shrink: 0;
-  width: 250px;
-  z-index: 10;
-}
-
-.navigation-card {
-  width: 100%;
-  padding: 8px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 6px;
-}
-
-.event-detail__nav-list :deep(.v-list-item) {
-  justify-content: flex-start;
-}
-
-.event-detail__content-card {
-  min-height: 100%;
-}
-
-.event-detail__card-title {
-  display: flex !important;
-  align-items: center;
-  min-height: 56px;
-  box-sizing: border-box;
-}
-
-.event-detail__card-title :deep(.title-container) {
-  width: 100%;
-  align-items: center;
-}
-
-.event-detail__nav-open {
-  flex-shrink: 0;
-}
-
-.event-detail__header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-  min-height: 40px;
-}
-
-@media (max-width: 960px) {
-  .content-wrapper {
-    max-height: none;
-    min-height: auto;
-  }
-
-  .content-area {
-    overflow-y: visible;
-  }
-}
-
-.event-detail__panel-wrap {
-  width: 100%;
-  min-width: 0;
-}
-
-.event-detail__panel-inner {
-  width: 100%;
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  overflow: hidden;
-  padding: 16px;
-}
-
 .event-detail__meta {
   display: flex;
   align-items: center;
@@ -620,16 +523,5 @@ function setBroadcast(mode) {
 .event-detail__star-count {
   min-width: 20px;
   text-align: end;
-}
-
-.event-detail__nav-drawer-card {
-  height: 100%;
-  border-radius: 0;
-  border: none;
-}
-
-.event-detail__nav-drawer :deep(.v-navigation-drawer__content) {
-  display: flex;
-  flex-direction: column;
 }
 </style>

@@ -5,7 +5,8 @@ import App from './App.vue'
 import router from './router'
 import vuetify from './plugins/vuetify'
 import './assets/Global.css'
-import './assets/ResponsiveUtilities.css'
+import './assets/tab-shell.css'
+import './assets/tab-shell-nav.css'
 import './utils/axios'
 
 const app = createApp(App)

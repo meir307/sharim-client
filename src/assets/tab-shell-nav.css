@@ -1,0 +1,34 @@
+/* Shared side navigation for tab views with vertical nav */
+
+.tab-nav-menu {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  width: 250px;
+  z-index: 10;
+}
+
+.navigation-card {
+  width: 100%;
+  padding: 8px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 6px;
+}
+
+.tab-nav-list .v-list-item {
+  justify-content: flex-start;
+}
+
+.tab-nav-drawer-card {
+  height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
+.tab-nav-drawer .v-navigation-drawer__content {
+  display: flex;
+  flex-direction: column;
+}

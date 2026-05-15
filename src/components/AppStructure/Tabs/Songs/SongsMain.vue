@@ -258,16 +258,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="songs-main">
+  <div class="tab-page">
     <v-navigation-drawer
       v-if="showNavInDrawer"
       v-model="navDrawerOpen"
       temporary
       location="start"
       width="260"
-      class="songs-main__nav-drawer"
+      class="tab-nav-drawer"
     >
-      <v-card class="navigation-card songs-main__nav-drawer-card" elevation="0" variant="flat">
+      <v-card class="navigation-card tab-nav-drawer-card" elevation="0" variant="flat">
         <v-tabs
           v-model="activeTab"
           direction="vertical"
@@ -284,8 +284,8 @@ onMounted(() => {
       </v-card>
     </v-navigation-drawer>
 
-    <div class="content-wrapper">
-      <aside class="navigation-menu d-none d-md-block">
+    <div class="content-wrapper content-wrapper--scroll-free content-wrapper--mobile-row">
+      <aside class="tab-nav-menu tab-nav-menu--hide-on-mobile d-none d-md-block">
         <v-card class="navigation-card" elevation="0" variant="flat">
           <v-tabs
             v-model="activeTab"
@@ -303,13 +303,13 @@ onMounted(() => {
         </v-card>
       </aside>
 
-      <div class="content-area">
-        <v-card class="modern-card songs-main__content-card" elevation="0">
-          <v-card-title class="modern-title songs-main__card-title">
+      <div class="content-area content-area--scroll-free">
+        <v-card class="modern-card tab-content-card" elevation="0">
+          <v-card-title class="modern-title tab-card-title">
             <div class="title-container">
               <v-btn
                 v-if="showNavInDrawer"
-                class="songs-main__nav-open"
+                class="tab-nav-open"
                 icon="mdi-menu"
                 variant="text"
                 density="comfortable"
@@ -318,7 +318,7 @@ onMounted(() => {
               ></v-btn>
               <h2 class="title-text">{{ activeTitle }}</h2>
               <v-spacer />
-              <div class="songs-main__header-actions">
+              <div class="tab-header-actions tab-header-actions--wide">
                 <template v-if="activeTab === 'songs'">
                   <v-text-field
                     v-model="songSearchText"
@@ -546,99 +546,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/*
- * Full width: break out of App.vue v-container max-width (1280px) to use v-main width.
- * margin-inline centers the 100vw strip on the constrained parent (full-bleed pattern).
- */
-.songs-main {
-  box-sizing: border-box;
-  width: 100vw;
-  max-width: 100vw;
-  margin-inline: calc(50% - 50vw);
-  margin-top: -16px;
-  padding-inline: 12px;
-  padding-top: 16px;
-}
-
-@media (min-width: 600px) {
-  .songs-main {
-    margin-top: -24px;
-    padding-inline: 16px;
-    padding-top: 24px;
-  }
-}
-
-/* Memunim FactoryMain.vue — menu right, content left in RTL */
-.content-wrapper {
-  display: flex;
-  position: relative;
-  width: 100%;
-  min-width: 0;
-  gap: 16px;
-  min-height: calc(100vh - 200px);
-  max-height: none;
-  overflow: visible;
-}
-
-.navigation-menu {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  flex: 0 0 auto;
-  flex-shrink: 0;
-  width: 250px;
-  z-index: 10;
-}
-
-.navigation-card {
-  width: 100%;
-  padding: 8px;
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 6px;
-}
-
-.content-area {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  overflow-x: hidden;
-  overflow-y: visible;
-  height: auto;
-}
-
-.songs-main__content-card {
-  min-height: 100%;
-}
-
-/* Stable purple header height across tab changes */
-.songs-main__card-title {
-  display: flex !important;
-  align-items: center;
-  min-height: 56px;
-  box-sizing: border-box;
-}
-
-.songs-main__card-title :deep(.title-container) {
-  width: 100%;
-  align-items: center;
-}
-
-.songs-main__nav-open {
-  flex-shrink: 0;
-}
-
-.songs-main__header-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-  /* Reserve space so header height stays similar when switching (menu + add vs single add) */
-  min-width: 200px;
-  min-height: 40px;
-}
-
 .songs-main__songs-search {
   min-width: min(34vw, 280px);
 }
@@ -661,33 +568,6 @@ onMounted(() => {
 
 .songs-main__window :deep(.tiles-container) {
   min-height: 200px;
-}
-
-@media (max-width: 960px) {
-  .content-wrapper {
-    flex-direction: row;
-    max-height: none;
-    min-height: auto;
-  }
-
-  .navigation-menu {
-    display: none !important;
-  }
-
-  .content-area {
-    overflow-y: visible;
-  }
-}
-
-.songs-main__nav-drawer-card {
-  height: 100%;
-  border-radius: 0;
-  border: none;
-}
-
-.songs-main__nav-drawer :deep(.v-navigation-drawer__content) {
-  display: flex;
-  flex-direction: column;
 }
 
 .songs-main__song-item + .songs-main__song-item {

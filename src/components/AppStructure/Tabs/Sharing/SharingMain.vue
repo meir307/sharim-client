@@ -66,19 +66,19 @@ async function onToggleSharing() {
 </script>
 
 <template>
-  <div class="sharing-main">
+  <div class="tab-page">
     <div class="content-wrapper">
       <div class="content-area">
-        <v-card class="modern-card sharing-main__content-card" elevation="0">
-          <v-card-title class="modern-title sharing-main__card-title">
+        <v-card class="modern-card tab-content-card" elevation="0">
+          <v-card-title class="modern-title tab-card-title">
             <div class="title-container">
               <h2 class="title-text">שיתוף</h2>
               <v-spacer />
             </div>
           </v-card-title>
           <v-card-text class="pa-0">
-            <div class="tiles-container sharing-main__panel-wrap">
-              <div class="sharing-main__panel-inner sharing-main__panel-inner--invite">
+            <div class="tiles-container tab-panel-wrap">
+              <div class="tab-panel-inner sharing-main__panel-inner--invite">
                 <div class="sharing-main__invite-block">
                   <p class="sharing-main__emit-line mb-3">
                     קוד השיתוף לאירוע הוא
@@ -143,86 +143,6 @@ async function onToggleSharing() {
 </template>
 
 <style scoped>
-.sharing-main {
-  box-sizing: border-box;
-  width: 100vw;
-  max-width: 100vw;
-  margin-inline: calc(50% - 50vw);
-  margin-top: -16px;
-  padding-inline: 12px;
-  padding-top: 16px;
-}
-
-@media (min-width: 600px) {
-  .sharing-main {
-    margin-top: -24px;
-    padding-inline: 16px;
-    padding-top: 24px;
-  }
-}
-
-.content-wrapper {
-  display: flex;
-  position: relative;
-  width: 100%;
-  min-width: 0;
-  gap: 16px;
-  min-height: calc(100vh - 200px);
-  max-height: calc(100vh - 200px);
-  overflow: hidden;
-}
-
-.content-area {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  height: 100%;
-}
-
-.sharing-main__content-card {
-  min-height: 100%;
-}
-
-.sharing-main__card-title {
-  display: flex !important;
-  align-items: center;
-  min-height: 56px;
-  box-sizing: border-box;
-}
-
-.sharing-main__card-title :deep(.title-container) {
-  width: 100%;
-  align-items: center;
-}
-
-@media (max-width: 960px) {
-  .content-wrapper {
-    max-height: none;
-    min-height: auto;
-  }
-
-  .content-area {
-    overflow-y: visible;
-  }
-}
-
-.sharing-main__panel-wrap {
-  width: 100%;
-  min-width: 0;
-}
-
-.sharing-main__panel-inner {
-  width: 100%;
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgb(var(--v-theme-surface));
-  overflow: hidden;
-  padding: 16px;
-}
-
 .sharing-main__panel-inner--invite {
   text-align: right;
 }

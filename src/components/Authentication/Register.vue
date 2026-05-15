@@ -178,11 +178,11 @@ export default {
 .license-text {
   margin-top: -30px;
   font-size: 14px;
-  color: #333;
+  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
 }
 
 .license-link {
-  color: #1976d2;
+  color: rgb(var(--v-theme-primary));
   text-decoration: none;
   font-weight: 500;
   cursor: pointer;
