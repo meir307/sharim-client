@@ -1,53 +1,42 @@
 <script setup>
-import { ref } from 'vue'
+const QUESTION_TYPES = [
+  { title: 'דירוג כוכבים (1-5)', value: 'stars' },
+  { title: 'טקסט חופשי', value: 'text' },
+]
+
+defineProps({
+  saving: { type: Boolean, default: false },
+})
 
 const questions = defineModel({
   type: Array,
   default: () => [],
 })
 
-defineProps({
-  emptyText: {
-    type: String,
-    default: 'אין שאלות משוב. הוסף שאלה מהכפתור למעלה.',
-  },
-})
-
 const emit = defineEmits(['save'])
 
-const saving = ref(false)
-
-const questionTypes = [
-  { title: 'דירוג כוכבים (1-5)', value: 'stars' },
-  { title: 'טקסט חופשי', value: 'text' },
-]
-
 function nextQuestionId() {
-  const ids = (questions.value || [])
+  const ids = (questions.value ?? [])
     .map((q) => Number(q?.id))
     .filter((id) => Number.isFinite(id))
   return ids.length ? Math.max(...ids) + 1 : 1
 }
 
 function addQuestion() {
-  const list = Array.isArray(questions.value) ? [...questions.value] : []
-  list.push({ id: nextQuestionId(), text: '', type: 'stars' })
-  questions.value = list
+  questions.value = [
+    ...(questions.value ?? []),
+    { id: nextQuestionId(), text: '', type: 'stars' },
+  ]
 }
 
 function removeQuestion(index) {
-  const list = Array.isArray(questions.value) ? [...questions.value] : []
+  const list = [...(questions.value ?? [])]
   list.splice(index, 1)
   questions.value = list
 }
 
-async function onSave() {
-  saving.value = true
-  try {
-    emit('save', Array.isArray(questions.value) ? [...questions.value] : [])
-  } finally {
-    saving.value = false
-  }
+function onSave() {
+  emit('save', [...(questions.value ?? [])])
 }
 
 defineExpose({ addQuestion })
@@ -57,16 +46,16 @@ defineExpose({ addQuestion })
   <div class="feedback-questions">
     <div class="feedback-questions__scroll">
       <div v-if="!questions?.length" class="text-body-2 text-medium-emphasis pa-4 text-center">
-        {{ emptyText }}
+        אין שאלות משוב. הוסף שאלה מהכפתור למעלה.
       </div>
 
       <v-card
-      v-for="(q, index) in questions"
-      :key="q.id ?? index"
-      variant="outlined"
-      class="feedback-questions__card mb-3 pa-3"
-    >
-      <div class="feedback-questions__row">
+        v-for="(q, index) in questions"
+        :key="q.id ?? index"
+        variant="outlined"
+        class="feedback-questions__card mb-3 pa-3"
+      >
+        <div class="feedback-questions__row">
           <span class="text-body-2 text-medium-emphasis feedback-questions__num">{{ index + 1 }}.</span>
           <v-text-field
             v-model="q.text"
@@ -78,7 +67,7 @@ defineExpose({ addQuestion })
           />
           <v-select
             v-model="q.type"
-            :items="questionTypes"
+            :items="QUESTION_TYPES"
             item-title="title"
             item-value="value"
             density="compact"
@@ -106,6 +95,7 @@ defineExpose({ addQuestion })
         class="text-none"
         prepend-icon="mdi-content-save"
         :loading="saving"
+        :disabled="saving"
         @click="onSave"
       >
         שמור

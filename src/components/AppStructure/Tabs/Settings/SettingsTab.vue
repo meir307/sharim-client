@@ -9,6 +9,7 @@ import LandingPage from './LandingPage.vue'
 import UpsertLandingPage from './UpsertLandingPage.vue'
 import { nextLandingPageId } from './landingPageModel.js'
 import { useSettingsContentStore } from '@/stores/SettingsContentStore'
+import { useUserStore } from '@/stores/UserStore'
 
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
 const NAV_DRAWER_BREAKPOINT = 960
@@ -26,6 +27,8 @@ const activeSection = ref('playlists')
 const settingsContentStore = useSettingsContentStore()
 const { landingPages } = storeToRefs(settingsContentStore)
 
+const userStore = useUserStore()
+
 const showNavInDrawer = computed(() => NAV_DRAWER_BREAKPOINT > (display.width?.value ?? 0))
 
 watch(activeSection, () => {
@@ -37,12 +40,20 @@ watch(activeSection, () => {
 const showUpsertPlaylistDialog = ref(false)
 const editPlaylist = ref(null)
 
-const defaultFeedbackQuestions = ref([
-  { id: 1, text: 'איך הייתה ההופעה?', type: 'stars' },
-  { id: 2, text: 'מה השיר שהכי אהבת?', type: 'text' },
-])
-
+const feedbackQuestionsDraft = ref([])
+const feedbackQuestionsSaving = ref(false)
 const feedbackQuestionsRef = ref(null)
+
+function syncFeedbackQuestionsFromUser() {
+  const raw = userStore.user?.feedbackQuestions
+  feedbackQuestionsDraft.value = Array.isArray(raw) ? raw.map((q) => ({ ...q })) : []
+}
+
+watch(
+  () => userStore.user?.feedbackQuestions,
+  () => syncFeedbackQuestionsFromUser(),
+  { immediate: true, deep: true },
+)
 
 const showUpsertLandingPageDialog = ref(false)
 const editLandingPage = ref(null)
@@ -88,10 +99,16 @@ function onAddFeedbackQuestion() {
   feedbackQuestionsRef.value?.addQuestion()
 }
 
-function onSaveFeedbackQuestions(questions) {
-  defaultFeedbackQuestions.value = Array.isArray(questions)
-    ? questions.map((q) => ({ ...q }))
-    : []
+async function onSaveFeedbackQuestions(questions) {
+  feedbackQuestionsSaving.value = true
+  try {
+    const saved = await userStore.saveFeedbackQuestions(questions)
+    feedbackQuestionsDraft.value = saved.map((q) => ({ ...q }))
+  } catch {
+    // errors surfaced via UserStore (alert)
+  } finally {
+    feedbackQuestionsSaving.value = false
+  }
 }
 
 function onAddLandingPage() {
@@ -221,7 +238,8 @@ function onLandingPageSaved(page) {
               <div class="tab-panel-inner tab-panel-inner--fill">
                 <FeedbackQuestions
                   ref="feedbackQuestionsRef"
-                  v-model="defaultFeedbackQuestions"
+                  v-model="feedbackQuestionsDraft"
+                  :saving="feedbackQuestionsSaving"
                   @save="onSaveFeedbackQuestions"
                 />
               </div>

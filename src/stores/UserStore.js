@@ -26,6 +26,57 @@ export function normalizeUserPlaylistsAndEmitCode(user) {
 }
 
 /**
+ * Ensure `user.feedbackQuestions` is a mutable array (parse JSON string from API / DB).
+ * @param {Record<string, unknown>} user
+ */
+export function normalizeUserFeedbackQuestions(user) {
+  if (!user || typeof user !== 'object') return
+  let fq = user.feedbackQuestions ?? user.FeedbackQuestions
+  if (typeof fq === 'string') {
+    try {
+      const parsed = JSON.parse(fq)
+      fq = Array.isArray(parsed) ? parsed : []
+    } catch {
+      fq = []
+    }
+  }
+  user.feedbackQuestions = Array.isArray(fq) ? fq : []
+}
+
+/** Run all user JSON-field normalizers after login or profile saves. */
+export function normalizeUserProfileFields(user) {
+  normalizeUserPlaylistsAndEmitCode(user)
+  normalizeUserFeedbackQuestions(user)
+}
+
+/**
+ * @param {unknown[]} questions
+ * @returns {Array<{ id: number|string, text: string, type: 'stars'|'text' }>}
+ */
+function normalizeFeedbackQuestionsForStorage(questions) {
+  if (!Array.isArray(questions)) return []
+  return questions
+    .map((q, index) => {
+      if (!q || typeof q !== 'object') return null
+      const text = String(q.text ?? q.Text ?? '').trim()
+      if (!text) return null
+      const type =
+        String(q.type ?? q.Type ?? 'stars').toLowerCase() === 'text' ? 'text' : 'stars'
+      let id = q.id ?? q.Id
+      if (id == null || String(id).trim() === '') {
+        id = index + 1
+      }
+      const idStr = String(id).trim()
+      return {
+        id: /^\d+$/.test(idStr) ? Number(idStr) : id,
+        text,
+        type,
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
  * Persist playlist `songs` as compact refs: `{ id }` when possible, else `{ name, url }`.
  * @param {unknown[]} songs
  * @returns {Array<Record<string, unknown>>}
@@ -81,7 +132,7 @@ export const useUserStore = defineStore('UserStore', {
       if (user && typeof user === 'object') {
         if (!Array.isArray(user.categories)) user.categories = []
         if (!Array.isArray(user.artists)) user.artists = []
-        normalizeUserPlaylistsAndEmitCode(user)
+        normalizeUserProfileFields(user)
       }
       return user
     })(),
@@ -109,7 +160,7 @@ export const useUserStore = defineStore('UserStore', {
         if (!Array.isArray(this.user.artists)) {
           this.user.artists = []
         }
-        normalizeUserPlaylistsAndEmitCode(this.user)
+        normalizeUserProfileFields(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         this.songs = []
       } catch (error) {
@@ -133,7 +184,7 @@ export const useUserStore = defineStore('UserStore', {
         if (!Array.isArray(this.user.artists)) {
           this.user.artists = []
         }
-        normalizeUserPlaylistsAndEmitCode(this.user)
+        normalizeUserProfileFields(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         this.songs = []
         alert('הרשמה בוצעה בהצלחה.')
@@ -188,7 +239,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.categories = []
         }
 
-        normalizeUserPlaylistsAndEmitCode(this.user)
+        normalizeUserProfileFields(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         return response
       } catch (error) {
@@ -289,7 +340,7 @@ export const useUserStore = defineStore('UserStore', {
           this.user.artists = []
         }
 
-        normalizeUserPlaylistsAndEmitCode(this.user)
+        normalizeUserProfileFields(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         return response
       } catch (error) {
@@ -380,7 +431,7 @@ export const useUserStore = defineStore('UserStore', {
         // API does not return updated lists — keep the payload we posted.
         this.user = { ...this.user, playLists: Array.isArray(next) ? [...next] : [] }
 
-        normalizeUserPlaylistsAndEmitCode(this.user)
+        normalizeUserProfileFields(this.user)
         localStorage.setItem('user', JSON.stringify(this.user))
         return response
       } catch (error) {
@@ -444,6 +495,61 @@ export const useUserStore = defineStore('UserStore', {
       const next = prev.filter((_, i) => i !== index)
       await this._savePlaylistsList(next)
       return true
+    },
+
+    /**
+     * POST feedback questions JSON to `user/SaveFeedbackQuestions` and update `user.feedbackQuestions`.
+     * @param {Array<Record<string, unknown>>} next
+     */
+    async _saveFeedbackQuestionsList(next) {
+      this.preAction()
+      try {
+        const response = await axios.post(
+          this.apiUrl + 'user/SaveFeedbackQuestions',
+          { FeedbackQuestions: next },
+          {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          },
+        )
+
+        const d = response.data ?? {}
+        const failed = d.success === false || d.Success === false
+        if (failed) {
+          const message = d.errorMessage || 'שמירת שאלות המשוב נכשלה'
+          alert(message)
+          this.error = message
+          throw new Error(message)
+        }
+
+        this.user = {
+          ...this.user,
+          feedbackQuestions: Array.isArray(next) ? [...next] : [],
+        }
+
+        normalizeUserFeedbackQuestions(this.user)
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return response
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        this.postAction()
+      }
+    },
+
+    /**
+     * Save the full feedback-questions list on the user profile.
+     * @param {unknown[]} questions
+     * @returns {Promise<Array<{ id: number|string, text: string, type: 'stars'|'text' }>>}
+     */
+    async saveFeedbackQuestions(questions) {
+      const next = normalizeFeedbackQuestionsForStorage(questions)
+      await this._saveFeedbackQuestionsList(next)
+      return Array.isArray(this.user.feedbackQuestions) ? [...this.user.feedbackQuestions] : []
     },
 
     /**
