@@ -1,13 +1,25 @@
 <script setup>
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
+import { useSettingsContentStore } from '@/stores/SettingsContentStore'
+
+const settingsContentStore = useSettingsContentStore()
+const { landingPages } = storeToRefs(settingsContentStore)
 
 const eventName = ref('חתונה — שבת הקרובה')
 
 /**
- * The active mode is determined by the server based on what the performer chose to broadcast.
- * Possible values: 'waiting' | 'voting' | 'lyrics' | 'feedback' | 'closed'
+ * Set by the server from the host's broadcast choice.
+ * `landing` — static copy (pre-show, break, ended/thanks, announcement, etc.)
  */
 const activeMode = ref('voting')
+
+/** From server / landing-page settings when broadcast mode is `landing`. */
+const landingTitle = ref('המופע יתחיל בקרוב')
+const landingBody = ref('השארו בדף זה — התוכן יתעדכן אוטומטית.')
+const landingIcon = ref('mdi-clock-outline')
+const landingShowSpinner = ref(true)
 
 /* ── Voting state (demo) ── */
 const hasVoted = ref(false)
@@ -32,7 +44,6 @@ function submitVote() {
 }
 
 /* ── Lyrics state (demo) ── */
-const lyricsUrl = ref('')
 const lyricsSongTitle = ref('אור הירח')
 
 /* ── Feedback state (demo) ── */
@@ -56,13 +67,23 @@ function submitFeedback() {
 }
 
 /* ── Demo mode switcher (remove in production) ── */
-const demoModes = [
-  { value: 'waiting', label: 'ממתין' },
-  { value: 'voting', label: 'הצבעה' },
-  { value: 'lyrics', label: 'מילים' },
-  { value: 'feedback', label: 'משוב' },
-  { value: 'closed', label: 'הסתיים' },
-]
+const demoModes = EVENT_BROADCAST_MODES.map((m) => ({ value: m.value, label: m.label }))
+
+function applyLandingPageTemplate(page) {
+  if (!page) return
+  landingTitle.value = page.title ?? ''
+  landingBody.value = page.body ?? ''
+  landingIcon.value = page.icon ?? 'mdi-web'
+  landingShowSpinner.value = Boolean(page.showSpinner)
+  activeMode.value = 'landing'
+}
+
+function applyDemoLandingPreset(preset) {
+  const pages = landingPages.value
+  const ended = pages.find((p) => p.id === 2) ?? pages[pages.length - 1]
+  const preShow = pages.find((p) => p.id === 1) ?? pages[0]
+  applyLandingPageTemplate(preset === 'ended' ? ended : preShow)
+}
 </script>
 
 <template>
@@ -79,9 +100,16 @@ const demoModes = [
             :variant="activeMode === m.value ? 'flat' : 'outlined'"
             :color="activeMode === m.value ? 'primary' : undefined"
             size="x-small"
-            @click="activeMode = m.value"
+            @click="m.value === 'landing' ? applyDemoLandingPreset('pre-show') : (activeMode = m.value)"
           >
             {{ m.label }}
+          </v-btn>
+          <v-btn
+            size="x-small"
+            variant="outlined"
+            @click="applyDemoLandingPreset('ended')"
+          >
+            נחיתה — סיום
           </v-btn>
         </div>
       </v-card>
@@ -92,12 +120,18 @@ const demoModes = [
         <h1 class="text-h5 font-weight-bold mb-1">{{ eventName }}</h1>
       </div>
 
-      <!-- ═══════ WAITING ═══════ -->
-      <div v-if="activeMode === 'waiting'" class="guest-event__section text-center mt-8">
-        <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-clock-outline</v-icon>
-        <h2 class="text-h6 text-medium-emphasis mb-2">האירוע עוד לא התחיל</h2>
-        <p class="text-body-2 text-medium-emphasis">השארו בדף זה — התוכן יתעדכן אוטומטית כשהאירוע יתחיל.</p>
-        <v-progress-linear indeterminate color="primary" class="mt-6 mx-auto" style="max-width: 200px" />
+      <!-- ═══════ LANDING (static — pre-show, break, ended/thanks, announcement, …) ═══════ -->
+      <div v-if="activeMode === 'landing'" class="guest-event__section text-center mt-8">
+        <v-icon size="64" color="grey-lighten-1" class="mb-4">{{ landingIcon }}</v-icon>
+        <h2 class="text-h6 text-medium-emphasis mb-2">{{ landingTitle }}</h2>
+        <p class="text-body-2 text-medium-emphasis">{{ landingBody }}</p>
+        <v-progress-linear
+          v-if="landingShowSpinner"
+          indeterminate
+          color="primary"
+          class="mt-6 mx-auto"
+          style="max-width: 200px"
+        />
       </div>
 
       <!-- ═══════ VOTING ═══════ -->
@@ -237,13 +271,6 @@ const demoModes = [
             </v-btn>
           </div>
         </template>
-      </div>
-
-      <!-- ═══════ CLOSED ═══════ -->
-      <div v-else-if="activeMode === 'closed'" class="guest-event__section text-center mt-8">
-        <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-check-circle-outline</v-icon>
-        <h2 class="text-h6 text-medium-emphasis mb-2">האירוע הסתיים</h2>
-        <p class="text-body-2 text-medium-emphasis">תודה שהשתתפתם!</p>
       </div>
 
     </div>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import EventsListMain from './EventsListMain.vue'
 import UpsertEvent from './UpsertEvent.vue'
 import EventDetail from './EventDetail.vue'
@@ -7,6 +7,50 @@ import EventDetail from './EventDetail.vue'
 const showUpsertEventDialog = ref(false)
 const editEvent = ref(null)
 const viewEvent = ref(null)
+
+const events = ref([
+  {
+    id: 1,
+    name: 'חתונה — שבת הקרובה',
+    date: '2026-05-16',
+    phase: 'voting',
+    playlistName: 'פלייליסט חתונה',
+    shareCode: '483291',
+    totalVotes: 42,
+    totalFeedback: 0,
+  },
+  {
+    id: 2,
+    name: 'בר מצווה — יוני',
+    date: '2026-06-12',
+    phase: 'draft',
+    playlistName: 'פלייליסט בר מצווה',
+    shareCode: '192847',
+    totalVotes: 0,
+    totalFeedback: 0,
+  },
+  {
+    id: 3,
+    name: 'אירוע חברה',
+    date: '2026-04-20',
+    phase: 'feedback',
+    playlistName: 'מיקס חברה',
+    shareCode: '556103',
+    totalVotes: 87,
+    totalFeedback: 23,
+  },
+])
+
+const upsertEventKey = computed(() =>
+  editEvent.value?.id != null ? String(editEvent.value.id) : 'new',
+)
+
+function nextEventId(list) {
+  const ids = list
+    .map((e) => Number(e.id))
+    .filter((n) => !Number.isNaN(n) && n > 0)
+  return ids.length ? Math.max(...ids) + 1 : 1
+}
 
 function onAddEvent() {
   editEvent.value = null
@@ -23,7 +67,37 @@ function onEditEventFromList(event) {
   showUpsertEventDialog.value = true
 }
 
-function onEventSaved() {
+function onEditEventFromDetail(event) {
+  onEditEventFromList(event)
+}
+
+function onEventSaved(payload) {
+  if (!payload || typeof payload !== 'object') return
+  const list = [...events.value]
+  const idx =
+    payload.id != null
+      ? list.findIndex((e) => String(e.id) === String(payload.id))
+      : -1
+
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...payload }
+    if (viewEvent.value && String(viewEvent.value.id) === String(payload.id)) {
+      viewEvent.value = { ...list[idx] }
+    }
+  } else {
+    const id = payload.id ?? nextEventId(list)
+    list.push({
+      phase: 'draft',
+      shareCode: String(100000 + id * 7919).slice(-6),
+      totalVotes: 0,
+      totalFeedback: 0,
+      playlistName: '',
+      ...payload,
+      id,
+    })
+  }
+
+  events.value = list
   editEvent.value = null
   showUpsertEventDialog.value = false
 }
@@ -63,10 +137,12 @@ function onBackFromEventDetail() {
               v-if="viewEvent"
               :event="viewEvent"
               @back="onBackFromEventDetail"
+              @edit-event="onEditEventFromDetail"
             />
             <div v-else class="tiles-container tab-panel-wrap">
               <div class="tab-panel-inner">
                 <EventsListMain
+                  v-model="events"
                   @edit-event="onEditEventFromList"
                   @view-event="onViewEvent"
                 />
@@ -77,10 +153,10 @@ function onBackFromEventDetail() {
       </div>
     </div>
 
-    <v-dialog v-model="showUpsertEventDialog" max-width="720" width="92%" persistent>
+    <v-dialog v-model="showUpsertEventDialog" scrollable max-width="720" width="92%" persistent>
       <UpsertEvent
         v-if="showUpsertEventDialog"
-        :show-dialog="showUpsertEventDialog"
+        :key="upsertEventKey"
         :edit-event="editEvent"
         @close-dialog="onCloseUpsertEventDialog"
         @saved="onEventSaved"

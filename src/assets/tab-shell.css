@@ -48,6 +48,7 @@
 }
 
 .content-wrapper--scroll-free {
+  height: auto;
   max-height: none;
   overflow: visible;
 }
@@ -167,15 +168,6 @@
   background: rgb(var(--v-theme-surface));
   overflow: visible;
   padding: 16px;
-}
-
-.tab-panel-inner.tab-panel-inner--scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .tab-panel-wrap--fill > .tab-panel-inner.tab-panel-inner--fill {

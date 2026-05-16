@@ -1,37 +1,10 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { formatHebrewDate } from '@/utils/formatHebrewDate'
 
 const emit = defineEmits(['edit-event', 'view-event'])
 
-const events = ref([
-  {
-    id: 1,
-    name: 'חתונה — שבת הקרובה',
-    date: '2026-05-16',
-    phase: 'voting',
-    playlistName: 'פלייליסט חתונה',
-    totalVotes: 42,
-    totalFeedback: 0,
-  },
-  {
-    id: 2,
-    name: 'בר מצווה — יוני',
-    date: '2026-06-12',
-    phase: 'draft',
-    playlistName: 'פלייליסט בר מצווה',
-    totalVotes: 0,
-    totalFeedback: 0,
-  },
-  {
-    id: 3,
-    name: 'אירוע חברה',
-    date: '2026-04-20',
-    phase: 'feedback',
-    playlistName: 'מיקס חברה',
-    totalVotes: 87,
-    totalFeedback: 23,
-  },
-])
+const events = defineModel({ type: Array, default: () => [] })
 
 const headers = [
   { title: 'שם האירוע', key: 'name', sortable: true, minWidth: 160 },
@@ -70,22 +43,9 @@ const phaseIcons = {
 const tableItems = computed(() =>
   events.value.map((ev) => ({
     ...ev,
-    dateFormatted: formatDate(ev.date),
+    dateFormatted: formatHebrewDate(ev.date),
   })),
 )
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  try {
-    return new Date(dateStr).toLocaleDateString('he-IL', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-  } catch {
-    return dateStr
-  }
-}
 
 function onEdit(event) {
   emit('edit-event', event)
@@ -161,24 +121,7 @@ function rowFromItem(item) {
 
         <template #item.actions="{ item }">
           <div class="events-list__actions d-inline-flex align-center justify-center flex-wrap ga-1">
-            <v-btn
-              icon="mdi-eye-outline"
-              variant="text"
-              size="small"
-              density="comfortable"
-              color="primary"
-              aria-label="פרטים"
-              @click="onView(rowFromItem(item))"
-            />
-            <v-btn
-              icon="mdi-pencil"
-              variant="text"
-              size="small"
-              density="comfortable"
-              color="primary"
-              aria-label="עריכה"
-              @click="onEdit(rowFromItem(item))"
-            />
+           
             <v-btn
               icon="mdi-delete"
               variant="text"

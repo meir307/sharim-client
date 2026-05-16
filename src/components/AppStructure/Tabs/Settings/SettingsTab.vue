@@ -1,9 +1,14 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useDisplay } from 'vuetify'
 import PlaylistsMain from '../Playlists/playlists/PlaylistsMain.vue'
 import UpsertPlaylist from '../Playlists/playlists/UpsertPlaylist.vue'
 import FeedbackQuestions from './FeedbackQuestions.vue'
+import LandingPage from './LandingPage.vue'
+import UpsertLandingPage from './UpsertLandingPage.vue'
+import { nextLandingPageId } from './landingPageModel.js'
+import { useSettingsContentStore } from '@/stores/SettingsContentStore'
 
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
 const NAV_DRAWER_BREAKPOINT = 960
@@ -17,6 +22,9 @@ const NAV_ITEMS = [
 const display = useDisplay()
 const navDrawerOpen = ref(false)
 const activeSection = ref('playlists')
+
+const settingsContentStore = useSettingsContentStore()
+const { landingPages } = storeToRefs(settingsContentStore)
 
 const showNavInDrawer = computed(() => NAV_DRAWER_BREAKPOINT > (display.width?.value ?? 0))
 
@@ -35,6 +43,13 @@ const defaultFeedbackQuestions = ref([
 ])
 
 const feedbackQuestionsRef = ref(null)
+
+const showUpsertLandingPageDialog = ref(false)
+const editLandingPage = ref(null)
+
+const upsertLandingPageKey = computed(() =>
+  editLandingPage.value?.id != null ? String(editLandingPage.value.id) : 'new',
+)
 
 const pageTitle = computed(() => {
   const item = NAV_ITEMS.find((n) => n.id === activeSection.value)
@@ -77,7 +92,39 @@ function onSaveFeedbackQuestions(questions) {
   defaultFeedbackQuestions.value = Array.isArray(questions)
     ? questions.map((q) => ({ ...q }))
     : []
-  // Persist when API is available
+}
+
+function onAddLandingPage() {
+  editLandingPage.value = null
+  showUpsertLandingPageDialog.value = true
+}
+
+function onCloseUpsertLandingPageDialog() {
+  showUpsertLandingPageDialog.value = false
+  editLandingPage.value = null
+}
+
+function onEditLandingPageFromList(page) {
+  editLandingPage.value = page && typeof page === 'object' ? { ...page } : null
+  showUpsertLandingPageDialog.value = true
+}
+
+function onLandingPageSaved(page) {
+  if (!page || typeof page !== 'object') return
+  const payload = { ...page }
+  const list = [...landingPages.value]
+  const idx = list.findIndex((p) => p.id != null && payload.id != null && String(p.id) === String(payload.id))
+  if (idx >= 0) {
+    list[idx] = payload
+  } else {
+    if (payload.id == null) {
+      payload.id = nextLandingPageId(list)
+    }
+    list.push(payload)
+  }
+  settingsContentStore.setLandingPages(list)
+  editLandingPage.value = null
+  showUpsertLandingPageDialog.value = false
 }
 </script>
 
@@ -153,6 +200,11 @@ function onSaveFeedbackQuestions(questions) {
                   הוסף שאלה
                 </v-btn>
               </div>
+              <div v-else-if="activeSection === 'landing-pages'" class="tab-header-actions">
+                <v-btn color="primary" class="add-btn" prepend-icon="mdi-plus" @click="onAddLandingPage">
+                  הוסף דף נחיתה
+                </v-btn>
+              </div>
             </div>
           </v-card-title>
 
@@ -178,8 +230,11 @@ function onSaveFeedbackQuestions(questions) {
               v-else-if="activeSection === 'landing-pages'"
               class="tiles-container tab-panel-wrap"
             >
-              <div class="tab-panel-inner tab-placeholder pa-8 text-center text-body-1 text-medium-emphasis">
-                ניהול דפי נחיתה יתווסף בקרוב.
+              <div class="tab-panel-inner">
+                <LandingPage
+                  v-model="landingPages"
+                  @edit-landing-page="onEditLandingPageFromList"
+                />
               </div>
             </div>
           </v-card-text>
@@ -194,6 +249,22 @@ function onSaveFeedbackQuestions(questions) {
         :edit-playlist="editPlaylist"
         @close-dialog="onCloseUpsertPlaylistDialog"
         @saved="onPlaylistSaved"
+      />
+    </v-dialog>
+
+    <v-dialog
+      v-model="showUpsertLandingPageDialog"
+      scrollable
+      max-width="720"
+      width="92%"
+      persistent
+    >
+      <UpsertLandingPage
+        v-if="showUpsertLandingPageDialog"
+        :key="upsertLandingPageKey"
+        :edit-landing-page="editLandingPage"
+        @close-dialog="onCloseUpsertLandingPageDialog"
+        @saved="onLandingPageSaved"
       />
     </v-dialog>
   </div>

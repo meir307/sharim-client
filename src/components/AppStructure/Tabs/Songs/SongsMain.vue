@@ -11,10 +11,11 @@ import { useSongsMainList, useSongsMainActiveTitle, runDeleteCategoryConfirmed, 
 const userStore = useUserStore()
 const display = useDisplay()
 
-/** Same pattern as UpsertPlaylist catalog `v-data-table`: `fixed-header` + numeric `height` enables body scroll. */
+/** `fixed-header` + numeric `height` enables body scroll; keep within visible card area (avoid clipped bottom). */
 const songsTableHeightPx = computed(() => {
-  const h = Number(display.height?.value) || 800
-  return Math.min(Math.round(h * 0.68), 760)
+  const vh = Number(display.height?.value) || 800
+  const chromePx = 300 // app bar, tab header, card title, tiles padding
+  return Math.max(280, Math.min(vh - chromePx, 720))
 })
 
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
@@ -621,12 +622,16 @@ onMounted(() => {
   min-width: 0;
 }
 
-/* Match UpsertPlaylist `.upsert-playlist__catalog-card` — clip so VDataTable owns internal scroll */
 .songs-main__songs-table-card {
   width: 100%;
   max-width: 100%;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.songs-main__songs-table :deep(.v-table__wrapper) {
+  padding-bottom: 8px;
+  box-sizing: border-box;
 }
 
 .songs-main__song-name-link:hover {
