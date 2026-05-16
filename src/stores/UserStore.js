@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useLoaderStore } from './LoaderStore'
+import { nextLandingPageId } from '@/components/AppStructure/Tabs/Settings/landingPageModel.js'
 
 /**
  * Ensure `user.playLists` is a mutable array (parse JSON string from API / DB).
@@ -43,10 +44,29 @@ export function normalizeUserFeedbackQuestions(user) {
   user.feedbackQuestions = Array.isArray(fq) ? fq : []
 }
 
+/**
+ * Ensure `user.landingPages` is a mutable array (parse JSON string from API / DB).
+ * @param {Record<string, unknown>} user
+ */
+export function normalizeUserLandingPages(user) {
+  if (!user || typeof user !== 'object') return
+  let lp = user.landingPages ?? user.LandingPages
+  if (typeof lp === 'string') {
+    try {
+      const parsed = JSON.parse(lp)
+      lp = Array.isArray(parsed) ? parsed : []
+    } catch {
+      lp = []
+    }
+  }
+  user.landingPages = Array.isArray(lp) ? lp : []
+}
+
 /** Run all user JSON-field normalizers after login or profile saves. */
 export function normalizeUserProfileFields(user) {
   normalizeUserPlaylistsAndEmitCode(user)
   normalizeUserFeedbackQuestions(user)
+  normalizeUserLandingPages(user)
 }
 
 /**
@@ -71,6 +91,35 @@ function normalizeFeedbackQuestionsForStorage(questions) {
         id: /^\d+$/.test(idStr) ? Number(idStr) : id,
         text,
         type,
+      }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {unknown[]} pages
+ * @returns {Array<Record<string, unknown>>}
+ */
+function normalizeLandingPagesForStorage(pages) {
+  if (!Array.isArray(pages)) return []
+  return pages
+    .map((p, index) => {
+      if (!p || typeof p !== 'object') return null
+      const name = String(p.name ?? p.Name ?? '').trim()
+      const title = String(p.title ?? p.Title ?? '').trim()
+      if (!name || !title) return null
+      let id = p.id ?? p.Id
+      if (id == null || String(id).trim() === '') {
+        id = index + 1
+      }
+      const idStr = String(id).trim()
+      return {
+        id: /^\d+$/.test(idStr) ? Number(idStr) : id,
+        name,
+        title,
+        body: String(p.body ?? p.Body ?? '').trim(),
+        icon: String(p.icon ?? p.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
+        showSpinner: Boolean(p.showSpinner ?? p.ShowSpinner),
       }
     })
     .filter(Boolean)
@@ -550,6 +599,129 @@ export const useUserStore = defineStore('UserStore', {
       const next = normalizeFeedbackQuestionsForStorage(questions)
       await this._saveFeedbackQuestionsList(next)
       return Array.isArray(this.user.feedbackQuestions) ? [...this.user.feedbackQuestions] : []
+    },
+
+    /**
+     * POST landing pages JSON to `user/SaveLandingPages` and update `user.landingPages`.
+     * @param {Array<Record<string, unknown>>} next
+     */
+    async _saveLandingPagesList(next) {
+      this.preAction()
+      try {
+        const response = await axios.post(
+          this.apiUrl + 'user/SaveLandingPages',
+          { LandingPages: next },
+          {
+            headers: {
+              sessionId: this.user.sessionId || '',
+            },
+          },
+        )
+
+        const d = response.data ?? {}
+        const failed = d.success === false || d.Success === false
+        if (failed) {
+          const message = d.errorMessage || 'שמירת דפי הנחיתה נכשלה'
+          alert(message)
+          this.error = message
+          throw new Error(message)
+        }
+
+        this.user = {
+          ...this.user,
+          landingPages: Array.isArray(next) ? [...next] : [],
+        }
+
+        normalizeUserLandingPages(this.user)
+        localStorage.setItem('user', JSON.stringify(this.user))
+        return response
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        this.postAction()
+      }
+    },
+
+    /**
+     * Save the full landing-pages list on the user profile.
+     * @param {unknown[]} pages
+     */
+    async saveLandingPages(pages) {
+      const next = normalizeLandingPagesForStorage(pages)
+      await this._saveLandingPagesList(next)
+      return Array.isArray(this.user.landingPages) ? [...this.user.landingPages] : []
+    },
+
+    /**
+     * Add or update a landing page, POST full list, then sync `user` + localStorage.
+     * @param {Record<string, unknown>} payload
+     * @returns {Promise<Record<string, unknown> | null>}
+     */
+    async upsertLandingPage(payload) {
+      if (!payload || typeof payload !== 'object') return null
+
+      const name = String(payload.name ?? payload.Name ?? '').trim()
+      const title = String(payload.title ?? payload.Title ?? '').trim()
+      if (!name) {
+        alert('יש להזין שם תבנית')
+        return null
+      }
+      if (!title) {
+        alert('יש להזין כותרת לאורח')
+        return null
+      }
+
+      const prev = Array.isArray(this.user.landingPages) ? [...this.user.landingPages] : []
+      const next = [...prev]
+      const pid = payload.id ?? payload.Id
+      const row = {
+        name,
+        title,
+        body: String(payload.body ?? payload.Body ?? '').trim(),
+        icon: String(payload.icon ?? payload.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
+        showSpinner: Boolean(payload.showSpinner ?? payload.ShowSpinner),
+      }
+
+      let targetId
+      if (pid != null && String(pid).trim() !== '') {
+        const idStr = String(pid).trim()
+        const idx = next.findIndex((p) => String(p?.id ?? p?.Id) === idStr)
+        const id = /^\d+$/.test(idStr) ? Number(idStr) : pid
+        const merged = { ...row, id }
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], ...merged }
+        } else {
+          next.push(merged)
+        }
+        targetId = idStr
+      } else {
+        const newId = nextLandingPageId(next)
+        targetId = String(newId)
+        next.push({ ...row, id: newId })
+      }
+
+      const stored = normalizeLandingPagesForStorage(next)
+      await this._saveLandingPagesList(stored)
+      const merged = Array.isArray(this.user.landingPages) ? this.user.landingPages : []
+      return merged.find((p) => String(p?.id ?? p?.Id) === targetId) ?? null
+    },
+
+    /**
+     * Remove a landing page by index and POST the remaining list.
+     * @param {number} index
+     * @returns {Promise<boolean>}
+     */
+    async deleteLandingPageAt(index) {
+      const prev = Array.isArray(this.user.landingPages) ? [...this.user.landingPages] : []
+      if (typeof index !== 'number' || index < 0 || index >= prev.length) {
+        return false
+      }
+      const next = prev.filter((_, i) => i !== index)
+      await this._saveLandingPagesList(normalizeLandingPagesForStorage(next))
+      return true
     },
 
     /**

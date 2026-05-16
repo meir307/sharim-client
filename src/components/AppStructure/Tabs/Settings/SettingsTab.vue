@@ -1,14 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useDisplay } from 'vuetify'
 import PlaylistsMain from '../Playlists/playlists/PlaylistsMain.vue'
 import UpsertPlaylist from '../Playlists/playlists/UpsertPlaylist.vue'
 import FeedbackQuestions from './FeedbackQuestions.vue'
 import LandingPage from './LandingPage.vue'
 import UpsertLandingPage from './UpsertLandingPage.vue'
-import { nextLandingPageId } from './landingPageModel.js'
-import { useSettingsContentStore } from '@/stores/SettingsContentStore'
 import { useUserStore } from '@/stores/UserStore'
 
 /** Match `.content-wrapper` @media (max-width: 960px) — sidebar hidden, drawer + menu btn */
@@ -24,10 +21,12 @@ const display = useDisplay()
 const navDrawerOpen = ref(false)
 const activeSection = ref('playlists')
 
-const settingsContentStore = useSettingsContentStore()
-const { landingPages } = storeToRefs(settingsContentStore)
-
 const userStore = useUserStore()
+
+const landingPages = computed(() => {
+  const raw = userStore.user?.landingPages
+  return Array.isArray(raw) ? raw.map((p) => ({ ...p })) : []
+})
 
 const showNavInDrawer = computed(() => NAV_DRAWER_BREAKPOINT > (display.width?.value ?? 0))
 
@@ -126,22 +125,23 @@ function onEditLandingPageFromList(page) {
   showUpsertLandingPageDialog.value = true
 }
 
-function onLandingPageSaved(page) {
+async function onLandingPageSaved(page) {
   if (!page || typeof page !== 'object') return
-  const payload = { ...page }
-  const list = [...landingPages.value]
-  const idx = list.findIndex((p) => p.id != null && payload.id != null && String(p.id) === String(payload.id))
-  if (idx >= 0) {
-    list[idx] = payload
-  } else {
-    if (payload.id == null) {
-      payload.id = nextLandingPageId(list)
-    }
-    list.push(payload)
+  try {
+    await userStore.upsertLandingPage(page)
+    editLandingPage.value = null
+    showUpsertLandingPageDialog.value = false
+  } catch {
+    // errors surfaced via UserStore (alert)
   }
-  settingsContentStore.setLandingPages(list)
-  editLandingPage.value = null
-  showUpsertLandingPageDialog.value = false
+}
+
+async function onDeleteLandingPageAt(index) {
+  try {
+    await userStore.deleteLandingPageAt(index)
+  } catch {
+    // errors surfaced via UserStore (alert)
+  }
 }
 </script>
 
@@ -250,8 +250,9 @@ function onLandingPageSaved(page) {
             >
               <div class="tab-panel-inner">
                 <LandingPage
-                  v-model="landingPages"
+                  :model-value="landingPages"
                   @edit-landing-page="onEditLandingPageFromList"
+                  @delete-landing-page="onDeleteLandingPageAt"
                 />
               </div>
             </div>

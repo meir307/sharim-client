@@ -13,7 +13,7 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['edit-landing-page'])
+const emit = defineEmits(['edit-landing-page', 'delete-landing-page'])
 
 function onEdit(page) {
   emit('edit-landing-page', page && typeof page === 'object' ? { ...page } : null)
@@ -22,9 +22,7 @@ function onEdit(page) {
 function onDelete(page, index) {
   const name = landingPageDisplayName(page)
   if (!window.confirm(`למחוק את "${name}"?`)) return
-  const list = Array.isArray(pages.value) ? [...pages.value] : []
-  list.splice(index, 1)
-  pages.value = list
+  emit('delete-landing-page', index)
 }
 </script>
 

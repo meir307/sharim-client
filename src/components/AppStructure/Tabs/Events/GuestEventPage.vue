@@ -1,11 +1,14 @@
 <script setup>
-import { ref } from 'vue'
-import { storeToRefs } from 'pinia'
+import { computed, ref } from 'vue'
 import { EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
-import { useSettingsContentStore } from '@/stores/SettingsContentStore'
+import { useUserStore } from '@/stores/UserStore'
 
-const settingsContentStore = useSettingsContentStore()
-const { landingPages } = storeToRefs(settingsContentStore)
+const userStore = useUserStore()
+
+const landingPages = computed(() => {
+  const raw = userStore.user?.landingPages
+  return Array.isArray(raw) ? raw : []
+})
 
 const eventName = ref('חתונה — שבת הקרובה')
 
@@ -80,9 +83,9 @@ function applyLandingPageTemplate(page) {
 
 function applyDemoLandingPreset(preset) {
   const pages = landingPages.value
-  const ended = pages.find((p) => p.id === 2) ?? pages[pages.length - 1]
-  const preShow = pages.find((p) => p.id === 1) ?? pages[0]
-  applyLandingPageTemplate(preset === 'ended' ? ended : preShow)
+  if (!pages.length) return
+  const page = preset === 'ended' ? pages[pages.length - 1] : pages[0]
+  applyLandingPageTemplate(page)
 }
 </script>
 
