@@ -1,56 +1,27 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import EventsListMain from './EventsListMain.vue'
 import UpsertEvent from './UpsertEvent.vue'
 import EventDetail from './EventDetail.vue'
+import { useEventStore } from '@/stores/eventStore'
 
 const showUpsertEventDialog = ref(false)
 const editEvent = ref(null)
 const viewEvent = ref(null)
 
-const events = ref([
-  {
-    id: 1,
-    name: 'חתונה — שבת הקרובה',
-    date: '2026-05-16',
-    phase: 'voting',
-    playlistName: 'פלייליסט חתונה',
-    shareCode: '483291',
-    totalVotes: 42,
-    totalFeedback: 0,
-  },
-  {
-    id: 2,
-    name: 'בר מצווה — יוני',
-    date: '2026-06-12',
-    phase: 'draft',
-    playlistName: 'פלייליסט בר מצווה',
-    shareCode: '192847',
-    totalVotes: 0,
-    totalFeedback: 0,
-  },
-  {
-    id: 3,
-    name: 'אירוע חברה',
-    date: '2026-04-20',
-    phase: 'feedback',
-    playlistName: 'מיקס חברה',
-    shareCode: '556103',
-    totalVotes: 87,
-    totalFeedback: 23,
-  },
-])
+const eventStore = useEventStore()
+const { events } = storeToRefs(eventStore)
+
+onMounted(() => {
+  eventStore.fetchEvents().catch(() => {
+    // errors surfaced via EventStore (alert)
+  })
+})
 
 const upsertEventKey = computed(() =>
   editEvent.value?.id != null ? String(editEvent.value.id) : 'new',
 )
-
-function nextEventId(list) {
-  const ids = list
-    .map((e) => Number(e.id))
-    .filter((n) => !Number.isNaN(n) && n > 0)
-  return ids.length ? Math.max(...ids) + 1 : 1
-}
 
 function onAddEvent() {
   editEvent.value = null
@@ -62,6 +33,10 @@ function onCloseUpsertEventDialog() {
   editEvent.value = null
 }
 
+function onDeleteEventFromList(_event) {
+  // wire to API in a follow-up
+}
+
 function onEditEventFromList(event) {
   editEvent.value = event && typeof event === 'object' ? { ...event } : null
   showUpsertEventDialog.value = true
@@ -71,35 +46,23 @@ function onEditEventFromDetail(event) {
   onEditEventFromList(event)
 }
 
-function onEventSaved(payload) {
+async function onEventSaved(payload) {
   if (!payload || typeof payload !== 'object') return
-  const list = [...events.value]
-  const idx =
-    payload.id != null
-      ? list.findIndex((e) => String(e.id) === String(payload.id))
-      : -1
+  try {
+    const saved =
+      payload.id != null && payload.id !== ''
+        ? await eventStore.updateEvent(payload)
+        : await eventStore.createEvent(payload)
 
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...payload }
-    if (viewEvent.value && String(viewEvent.value.id) === String(payload.id)) {
-      viewEvent.value = { ...list[idx] }
+    if (viewEvent.value && String(viewEvent.value.id) === String(saved.id)) {
+      viewEvent.value = { ...saved }
     }
-  } else {
-    const id = payload.id ?? nextEventId(list)
-    list.push({
-      phase: 'draft',
-      shareCode: String(100000 + id * 7919).slice(-6),
-      totalVotes: 0,
-      totalFeedback: 0,
-      playlistName: '',
-      ...payload,
-      id,
-    })
-  }
 
-  events.value = list
-  editEvent.value = null
-  showUpsertEventDialog.value = false
+    editEvent.value = null
+    showUpsertEventDialog.value = false
+  } catch {
+    // errors surfaced via EventStore (alert)
+  }
 }
 
 function onViewEvent(event) {
@@ -143,8 +106,8 @@ function onBackFromEventDetail() {
               <div class="tab-panel-inner">
                 <EventsListMain
                   v-model="events"
-                  @edit-event="onEditEventFromList"
                   @view-event="onViewEvent"
+                  @delete-event="onDeleteEventFromList"
                 />
               </div>
             </div>

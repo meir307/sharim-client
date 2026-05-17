@@ -17,6 +17,12 @@ const router = createRouter({
       component: () => import('@/components/AppStructure/Tabs/Home/GuestWordsView.vue'),
     },
     {
+      path: '/guest',
+      name: 'guest-event-query',
+      meta: { requiresAuth: false, guestFullscreen: true },
+      component: () => import('@/components/AppStructure/Tabs/Events/GuestEventPage.vue'),
+    },
+    {
       path: '/guest/:emitCode',
       name: 'guest-words-by-code',
       meta: { requiresAuth: false, guestFullscreen: true },

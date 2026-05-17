@@ -41,7 +41,7 @@ const activeNavItem = computed(() =>
   NAV_ITEMS.find((n) => n.id === activeSection.value) ?? NAV_ITEMS[0],
 )
 
-const ev = computed(() => props.event)
+const event = computed(() => props.event)
 
 function openNavDrawer() {
   navDrawerOpen.value = true
@@ -56,8 +56,8 @@ function onBack() {
 }
 
 function onEdit() {
-  if (ev.value && typeof ev.value === 'object') {
-    emit('edit-event', { ...ev.value })
+  if (event.value && typeof event.value === 'object') {
+    emit('edit-event', { ...event.value })
   }
 }
 </script>
@@ -90,7 +90,7 @@ function onEdit() {
     </v-navigation-drawer>
 
     <div class="event-detail__toolbar">
-      <h2 class="event-detail__event-name text-h6 font-weight-bold mb-0">{{ ev?.name }}</h2>
+      <h2 class="event-detail__event-name text-h6 font-weight-bold mb-0">{{ event?.name }}</h2>
       <v-spacer />
       <v-btn
         color="success"
@@ -156,7 +156,7 @@ function onEdit() {
           <v-card-text class="pa-0">
             <component
               :is="activeNavItem.component"
-              v-bind="activeSection === 'control' ? { event: ev } : {}"
+              :event="activeSection === 'control' ? event : undefined"
             />
           </v-card-text>
         </v-card>

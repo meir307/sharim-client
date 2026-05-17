@@ -13,7 +13,7 @@ const form = reactive({
   id: null,
   name: '',
   date: '',
-  playlistName: '',
+  description: '',
 })
 
 const isUpdateMode = computed(() => form.id != null && form.id !== '')
@@ -25,13 +25,13 @@ function applyEventToForm(event) {
     form.id = null
     form.name = ''
     form.date = ''
-    form.playlistName = ''
+    form.description = ''
     return
   }
   form.id = event.id ?? null
   form.name = event.name ?? ''
   form.date = event.date ?? ''
-  form.playlistName = event.playlistName ?? ''
+  form.description = event.description ?? event.playlistName ?? ''
 }
 
 watch(
@@ -58,7 +58,7 @@ function buildPayload() {
     id: form.id,
     name: String(form.name).trim(),
     date: form.date || '',
-    playlistName: String(form.playlistName).trim(),
+    description: String(form.description).trim(),
   }
 }
 
@@ -100,12 +100,14 @@ function save() {
             hide-details="auto"
           />
         </v-col>
-        <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.playlistName"
-            label="פלייליסט"
+        <v-col cols="12">
+          <v-textarea
+            v-model="form.description"
+            label="תיאור"
             density="comfortable"
             hide-details="auto"
+            rows="2"
+            auto-grow
           />
         </v-col>
       </v-row>

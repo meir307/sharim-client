@@ -44,3 +44,13 @@ export function buildGuestEventShareUrl(shareCode) {
   if (!code) return ''
   return absoluteGuestPath(`/guest/event/${encodeURIComponent(code)}`)
 }
+
+/**
+ * Guest event link: `https://[domain]/guest?ev=[sharingCode]`
+ * @param {string | number | null | undefined} sharingCode
+ */
+export function buildGuestEventQueryUrl(sharingCode) {
+  const code = String(sharingCode ?? '').trim()
+  if (!code) return ''
+  return absoluteGuestPath(`/guest?ev=${encodeURIComponent(code)}`)
+}

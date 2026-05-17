@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, toValue } from 'vue'
 import { DEFAULT_BROADCAST_MODE, EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
 import { formatHebrewDate } from '@/utils/formatHebrewDate'
-import { buildGuestEventShareUrl } from '@/utils/shareGuestUrl'
+import { buildGuestEventQueryUrl } from '@/utils/shareGuestUrl'
+import { extractEventSharingCode } from '@/stores/eventStore'
 
 const props = defineProps({
   event: { type: Object, default: null },
@@ -16,16 +17,26 @@ const copySnackbar = ref(false)
 const copySnackbarText = ref('')
 const copySnackbarColor = ref('success')
 
+const resolvedEvent = computed(() => toValue(props.event))
+
+const sharingCode = computed(() => extractEventSharingCode(resolvedEvent.value))
+
+const guestLink = computed(() => buildGuestEventQueryUrl(sharingCode.value))
+
+const guestLinkHint = computed(() =>
+  sharingCode.value
+    ? ''
+    : 'קוד השיתוף יופיע לאחר יצירת האירוע או כשהשרת מחזיר sharingCode',
+)
+
 const activeBroadcastMeta = computed(() =>
   broadcastModes.find((m) => m.value === currentBroadcast.value) || broadcastModes[0],
 )
 
-const guestLink = computed(() => buildGuestEventShareUrl(props.event?.shareCode))
-
 async function copyGuestLink() {
   const url = guestLink.value
   if (!url) {
-    copySnackbarText.value = 'אין קישור לשיתוף — הוסף קוד שיתוף לאירוע'
+    copySnackbarText.value = 'אין קישור לשיתוף — חסר קוד שיתוף לאירוע'
     copySnackbarColor.value = 'warning'
     copySnackbar.value = true
     return
@@ -52,10 +63,9 @@ function setBroadcast(mode) {
     <div class="tab-panel-inner">
       <div class="event-detail-control__meta text-body-2 text-medium-emphasis mb-4">
         <v-icon size="14" class="me-1">mdi-calendar</v-icon>
-        {{ formatHebrewDate(event?.date) }}
+        {{ formatHebrewDate(resolvedEvent?.date) }}
         <span class="mx-2">·</span>
-        <v-icon size="14" class="me-1">mdi-playlist-music</v-icon>
-        {{ event?.playlistName || '—' }}
+        {{ resolvedEvent?.description || '—' }}
       </div>
 
       <div class="text-subtitle-2 text-medium-emphasis mb-2">
@@ -66,9 +76,11 @@ function setBroadcast(mode) {
         :model-value="guestLink"
         readonly
         density="compact"
-        hide-details
+        hide-details="auto"
         variant="outlined"
-        class="event-detail-control__link-input mb-2"
+        class="event-detail-control__link-input mb-1"
+        :placeholder="guestLinkHint"
+        dir="ltr"
       >
         <template #append-inner>
           <v-btn
@@ -77,10 +89,17 @@ function setBroadcast(mode) {
             size="small"
             density="compact"
             aria-label="העתק קישור"
+            :disabled="!guestLink"
             @click="copyGuestLink"
           />
         </template>
       </v-text-field>
+      <p v-if="sharingCode" class="text-caption text-medium-emphasis mb-4">
+        קוד שיתוף: <span class="tabular-nums" dir="ltr">{{ sharingCode }}</span>
+      </p>
+      <p v-else class="text-caption text-warning mb-4">
+        {{ guestLinkHint }}
+      </p>
       <p class="text-caption text-medium-emphasis mb-4">
         קישור זה ניתן מראש (למשל עם הכרטיס). הקהל יראה תוכן לפי מה שתבחר לשדר.
       </p>
@@ -130,6 +149,11 @@ function setBroadcast(mode) {
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.event-detail-control__link-input :deep(input) {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
 }
 
 .event-detail-control__broadcast-grid {

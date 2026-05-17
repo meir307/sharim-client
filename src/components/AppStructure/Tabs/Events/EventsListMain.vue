@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { formatHebrewDate } from '@/utils/formatHebrewDate'
 
-const emit = defineEmits(['edit-event', 'view-event'])
+const emit = defineEmits(['view-event', 'delete-event'])
 
 const events = defineModel({ type: Array, default: () => [] })
 
@@ -10,7 +10,7 @@ const headers = [
   { title: 'שם האירוע', key: 'name', sortable: true, minWidth: 160 },
   { title: 'שלב', key: 'phase', sortable: true, width: 56, align: 'center' },
   { title: 'תאריך', key: 'date', sortable: true, width: 140 },
-  { title: 'פלייליסט', key: 'playlistName', sortable: true, minWidth: 120 },
+  { title: 'תיאור', key: 'description', sortable: true, minWidth: 120 },
   { title: 'הצבעות', key: 'totalVotes', sortable: true, width: 100, align: 'center' },
   { title: 'תגובות', key: 'totalFeedback', sortable: true, width: 100, align: 'center' },
   { title: '', key: 'actions', sortable: false, width: 120, align: 'center' },
@@ -41,22 +41,18 @@ const phaseIcons = {
 }
 
 const tableItems = computed(() =>
-  events.value.map((ev) => ({
+  (events.value ?? []).map((ev) => ({
     ...ev,
     dateFormatted: formatHebrewDate(ev.date),
   })),
 )
-
-function onEdit(event) {
-  emit('edit-event', event)
-}
 
 function onView(event) {
   emit('view-event', event)
 }
 
 function onDelete(event) {
-  // placeholder
+  emit('delete-event', event)
 }
 
 function rowFromItem(item) {
@@ -68,7 +64,7 @@ function rowFromItem(item) {
 
 <template>
   <div class="events-list">
-    <v-card v-if="events.length" variant="outlined" class="events-list__table-card">
+    <v-card v-if="(events ?? []).length" variant="outlined" class="events-list__table-card">
       <v-data-table
         class="modern-table events-list__table"
         :headers="headers"
@@ -107,16 +103,16 @@ function rowFromItem(item) {
           <span class="text-body-2">{{ item.dateFormatted }}</span>
         </template>
 
-        <template #item.playlistName="{ item }">
-          <span class="text-body-2">{{ item.playlistName || '—' }}</span>
+        <template #item.description="{ item }">
+          <span class="text-body-2">{{ item.description || item.playlistName || '—' }}</span>
         </template>
 
         <template #item.totalVotes="{ item }">
-          <span class="tabular-nums text-body-2">{{ item.totalVotes }}</span>
+          <span class="tabular-nums text-body-2">{{ item.totalVotes ?? 0 }}</span>
         </template>
 
         <template #item.totalFeedback="{ item }">
-          <span class="tabular-nums text-body-2">{{ item.totalFeedback }}</span>
+          <span class="tabular-nums text-body-2">{{ item.totalFeedback ?? 0 }}</span>
         </template>
 
         <template #item.actions="{ item }">
