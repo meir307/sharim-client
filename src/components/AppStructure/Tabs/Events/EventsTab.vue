@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import EventsListMain from './EventsListMain.vue'
 import UpsertEvent from './UpsertEvent.vue'
@@ -18,6 +18,20 @@ onMounted(() => {
     // errors surfaced via EventStore (alert)
   })
 })
+
+watch(
+  () => eventStore.events,
+  (list) => {
+    const id = eventStore.selectedEventId
+    if (id == null || !Array.isArray(list)) return
+    const fresh = list.find((e) => String(e.id) === String(id))
+    if (fresh) {
+      eventStore.selectEvent(fresh)
+      viewEvent.value = { ...fresh }
+    }
+  },
+  { deep: true },
+)
 
 const upsertEventKey = computed(() =>
   editEvent.value?.id != null ? String(editEvent.value.id) : 'new',
@@ -55,6 +69,7 @@ async function onEventSaved(payload) {
         : await eventStore.createEvent(payload)
 
     if (viewEvent.value && String(viewEvent.value.id) === String(saved.id)) {
+      eventStore.selectEvent(saved)
       viewEvent.value = { ...saved }
     }
 
@@ -66,10 +81,12 @@ async function onEventSaved(payload) {
 }
 
 function onViewEvent(event) {
+  eventStore.selectEvent(event)
   viewEvent.value = event && typeof event === 'object' ? { ...event } : null
 }
 
 function onBackFromEventDetail() {
+  eventStore.clearSelectedEvent()
   viewEvent.value = null
 }
 </script>

@@ -1,13 +1,23 @@
 <script setup>
-import { computed, ref, toValue } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
 import { DEFAULT_BROADCAST_MODE, EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
 import { formatHebrewDate } from '@/utils/formatHebrewDate'
 import { buildGuestEventQueryUrl } from '@/utils/shareGuestUrl'
-import { extractEventSharingCode } from '@/stores/eventStore'
+import { broadcastModeFromSharingParams, currentBroadcastFromEvent } from '@/utils/eventSharingModel.js'
+import { extractEventSharingCode, useEventStore } from '@/stores/eventStore'
+import { useUserStore } from '@/stores/UserStore'
+import DisplaySong from '@/components/AppStructure/Tabs/Songs/DisplaySong.vue'
+import ActivateLandingDialog from './ActivationDialogs/ActivateLandingDialog.vue'
+import ActivateVotingDialog from './ActivationDialogs/ActivateVotingDialog.vue'
+import ActivateLyricsDialog from './ActivationDialogs/ActivateLyricsDialog.vue'
+import ActivateFeedbackDialog from './ActivationDialogs/ActivateFeedbackDialog.vue'
 
 const props = defineProps({
   event: { type: Object, default: null },
 })
+
+const eventStore = useEventStore()
+const userStore = useUserStore()
 
 const broadcastModes = EVENT_BROADCAST_MODES
 
@@ -17,7 +27,11 @@ const copySnackbar = ref(false)
 const copySnackbarText = ref('')
 const copySnackbarColor = ref('success')
 
-const resolvedEvent = computed(() => toValue(props.event))
+const propEvent = computed(() => toValue(props.event))
+
+const resolvedEvent = computed(
+  () => eventStore.selectedEvent ?? propEvent.value,
+)
 
 const sharingCode = computed(() => extractEventSharingCode(resolvedEvent.value))
 
@@ -31,6 +45,14 @@ const guestLinkHint = computed(() =>
 
 const activeBroadcastMeta = computed(() =>
   broadcastModes.find((m) => m.value === currentBroadcast.value) || broadcastModes[0],
+)
+
+watch(
+  resolvedEvent,
+  (ev) => {
+    currentBroadcast.value = currentBroadcastFromEvent(ev)
+  },
+  { immediate: true },
 )
 
 async function copyGuestLink() {
@@ -53,8 +75,64 @@ async function copyGuestLink() {
   }
 }
 
-function setBroadcast(mode) {
-  currentBroadcast.value = mode
+const showLandingDialog = ref(false)
+const showVotingDialog = ref(false)
+const showLyricsDialog = ref(false)
+const showFeedbackDialog = ref(false)
+
+const showDisplaySong = ref(false)
+const displaySongPlaylist = ref(null)
+const activating = ref(false)
+
+function openActivationDialog(mode) {
+  showLandingDialog.value = mode === 'landing'
+  showVotingDialog.value = mode === 'voting'
+  showLyricsDialog.value = mode === 'lyrics'
+  showFeedbackDialog.value = mode === 'feedback'
+}
+
+async function ensureSongsLoaded() {
+  const list = Array.isArray(userStore.songs) ? userStore.songs : []
+  if (list.length > 0) return
+  try {
+    await userStore.fetchSongs()
+  } catch {
+    // errors surfaced in UserStore
+  }
+}
+
+async function onSharingActivate(sharingParams) {
+  activating.value = true
+  try {
+    const saved = await eventStore.updateBrodcast(sharingParams)
+    currentBroadcast.value = broadcastModeFromSharingParams(saved)
+    copySnackbarText.value = 'מצב השידור עודכן'
+    copySnackbarColor.value = 'success'
+    copySnackbar.value = true
+  } catch {
+    // alert from store
+  } finally {
+    activating.value = false
+  }
+}
+
+async function onLyricsActivate({ playlist, sharingParams }) {
+  activating.value = true
+  try {
+    const saved = await eventStore.updateBrodcast(sharingParams)
+    currentBroadcast.value = broadcastModeFromSharingParams(saved)
+    await ensureSongsLoaded()
+    displaySongPlaylist.value = playlist && typeof playlist === 'object' ? { ...playlist } : null
+    showDisplaySong.value = true
+  } catch {
+    // alert from store
+  } finally {
+    activating.value = false
+  }
+}
+
+function onDisplaySongClosed() {
+  displaySongPlaylist.value = null
 }
 </script>
 
@@ -130,13 +208,28 @@ function setBroadcast(mode) {
           :prepend-icon="mode.icon"
           size="small"
           class="text-none"
-          @click="setBroadcast(mode.value)"
+          :disabled="activating"
+          @click="openActivationDialog(mode.value)"
         >
           {{ mode.label }}
         </v-btn>
       </div>
     </div>
   </div>
+
+  <ActivateLandingDialog v-model="showLandingDialog" @activate="onSharingActivate" />
+  <ActivateVotingDialog v-model="showVotingDialog" @activate="onSharingActivate" />
+  <ActivateLyricsDialog v-model="showLyricsDialog" @activate="onLyricsActivate" />
+  <ActivateFeedbackDialog v-model="showFeedbackDialog" @activate="onSharingActivate" />
+
+  <DisplaySong
+    v-model="showDisplaySong"
+    :playlist="displaySongPlaylist"
+    link-url=""
+    song-title=""
+    :cords="null"
+    @closed="onDisplaySongClosed"
+  />
 
   <v-snackbar v-model="copySnackbar" :color="copySnackbarColor" location="bottom" :timeout="3000">
     {{ copySnackbarText }}

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useUserStore } from './UserStore'
 import { useLoaderStore } from './LoaderStore'
+import { parseSharingParams } from '@/utils/eventSharingModel'
 
 /**
  * @param {Record<string, unknown> | null | undefined} event
@@ -31,6 +32,7 @@ export function normalizeEventFromApi(raw) {
   if (!raw || typeof raw !== 'object') return null
   const id = raw.id ?? raw.Id
   if (id == null || String(id).trim() === '') return null
+  const sharingParams = parseSharingParams(raw.sharingParams ?? raw.SharingParams)
   return {
     id,
     name: String(raw.name ?? raw.Name ?? '').trim(),
@@ -38,6 +40,7 @@ export function normalizeEventFromApi(raw) {
     description: String(raw.description ?? raw.Description ?? '').trim(),
     phase: raw.phase ?? raw.Phase ?? 'draft',
     shareCode: extractEventSharingCode(raw),
+    sharingParams,
     totalVotes: Number(raw.totalVotes ?? raw.TotalVotes ?? 0) || 0,
     totalFeedback: Number(raw.totalFeedback ?? raw.TotalFeedback ?? 0) || 0,
   }
@@ -57,6 +60,19 @@ function buildEventRequestBody(payload) {
     body.id = id
   }
   return body
+}
+
+/**
+ * @param {unknown} data
+ * @param {string} [defaultMessage]
+ */
+function assertApiSuccess(data, defaultMessage = 'הפעולה נכשלה') {
+  if (!data || typeof data !== 'object') return
+  if (data.success === false || data.Success === false) {
+    const message =
+      data.errorMessage ?? data.ErrorMessage ?? data.message ?? data.Message ?? defaultMessage
+    throw new Error(String(message))
+  }
 }
 
 /**
@@ -95,10 +111,36 @@ function eventsListFromResponseData(data) {
 export const useEventStore = defineStore('EventStore', {
   state: () => ({
     events: [],
+    selectedEventId: null,
+    /** Snapshot of the event opened from the list (incl. sharingParams after broadcast). */
+    selectedEvent: null,
     error: null,
   }),
 
   actions: {
+    /**
+     * @param {Record<string, unknown> | null | undefined} event
+     */
+    selectEvent(event) {
+      if (!event || typeof event !== 'object') {
+        this.selectedEventId = null
+        this.selectedEvent = null
+        return
+      }
+      const id = event.id ?? event.Id
+      if (id == null || String(id).trim() === '') {
+        this.selectedEventId = null
+        this.selectedEvent = null
+        return
+      }
+      this.selectedEventId = id
+      this.selectedEvent = { ...event, id }
+    },
+
+    clearSelectedEvent() {
+      this.selectedEventId = null
+      this.selectedEvent = null
+    },
     /**
      * `POST event/FetchEvents` — load all events for the logged-in user.
      * @returns {Promise<Array<Record<string, unknown>>>}
@@ -214,6 +256,54 @@ export const useEventStore = defineStore('EventStore', {
           this.events = [...this.events, event]
         }
         return event
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        alert(message)
+        this.error = message
+        throw error
+      } finally {
+        loaderStore.hide()
+      }
+    },
+
+    /**
+     * `POST event/UpdateBrodcast` — uses `selectedEventId`; `sharingParams` includes `broadcastMode`.
+     * @param {Record<string, unknown>} sharingParams
+     */
+    async updateBrodcast(sharingParams) {
+      const userStore = useUserStore()
+      const loaderStore = useLoaderStore()
+
+      const id = this.selectedEventId
+      if (id == null || String(id).trim() === '') {
+        throw new Error('חסר מזהה אירוע')
+      }
+      if (!sharingParams || typeof sharingParams !== 'object') {
+        throw new Error('חסרים פרמטרי שיתוף')
+      }
+      if (!String(sharingParams.broadcastMode ?? sharingParams.brodcastMode ?? '').trim()) {
+        throw new Error('חסר מצב שידור בפרמטרי השיתוף')
+      }
+
+      this.error = null
+      loaderStore.show()
+      try {
+        const response = await axios.post(
+          userStore.apiUrl + 'event/UpdateBrodcast',
+          { eventId: id, sharingParams },
+          {
+            headers: {
+              sessionId: userStore.user?.sessionId || '',
+            },
+          },
+        )
+        assertApiSuccess(response.data, 'עדכון השידור נכשל')
+
+        const parsed = parseSharingParams(sharingParams)
+        if (this.selectedEvent && String(this.selectedEvent.id) === String(id)) {
+          this.selectedEvent = { ...this.selectedEvent, sharingParams: parsed }
+        }
+        return parsed
       } catch (error) {
         const message = error.response?.data?.message ?? error.message
         alert(message)

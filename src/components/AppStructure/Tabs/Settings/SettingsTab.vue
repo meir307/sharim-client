@@ -274,8 +274,8 @@ async function onDeleteLandingPageAt(index) {
     <v-dialog
       v-model="showUpsertLandingPageDialog"
       scrollable
-      max-width="720"
-      width="92%"
+      max-width="880"
+      width="94%"
       persistent
     >
       <UpsertLandingPage
