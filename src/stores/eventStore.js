@@ -141,6 +141,36 @@ export const useEventStore = defineStore('EventStore', {
       this.selectedEventId = null
       this.selectedEvent = null
     },
+
+    /**
+     * `POST event/FetchGuestEvent` — no session; lookup by `sharingCode` (guest link).
+     * @param {string} sharingCode
+     */
+    async fetchGuestEventBySharingCode(sharingCode) {
+      const userStore = useUserStore()
+      const code = String(sharingCode ?? '').trim()
+      if (!code) {
+        throw new Error('קוד שיתוף חסר')
+      }
+
+      try {
+        const response = await axios.post(
+          userStore.apiUrl + 'event/FetchGuestEvent',
+          { sharingCode: code },
+        )
+        const event = eventFromResponseData(response.data)
+        if (!event) {
+          throw new Error('אירוע לא נמצא')
+        }
+        return event
+      } catch (error) {
+        const resData = error?.response?.data ?? {}
+        const message = String(
+          resData.message ?? resData.errorMessage ?? error.message ?? '',
+        ).trim()
+        throw new Error(message || 'לא ניתן לטעון את האירוע')
+      }
+    },
     /**
      * `POST event/FetchEvents` — load all events for the logged-in user.
      * @returns {Promise<Array<Record<string, unknown>>>}

@@ -35,3 +35,42 @@ export const EVENT_BROADCAST_MODES = [
 ]
 
 export const DEFAULT_BROADCAST_MODE = 'landing'
+
+const modeMeta = (value) => EVENT_BROADCAST_MODES.find((m) => m.value === value)
+
+/**
+ * @param {string} [landingPageName] — template name from settings
+ */
+export function formatLandingBroadcastDescription(landingPageName) {
+  const base =
+    modeMeta('landing')?.description ??
+    'טקסט סטטי — התחלה, הפסקה, סיום, תודה, הודעה, QR וכו\''
+  const name = String(landingPageName ?? '').trim()
+  if (!name) return base
+  return `הקהל רואים דף נחיתה «${name}»`
+}
+
+/**
+ * @param {string} [playlistName]
+ */
+export function formatVotingBroadcastDescription(playlistName) {
+  const base = modeMeta('voting')?.description ?? 'הקהל בוחר שירים מהפלייליסט'
+  const name = String(playlistName ?? '').trim()
+  if (!name) return base
+  return `הקהל בוחר שירים מהפלייליסט «${name}»`
+}
+
+/**
+ * @param {string} modeValue
+ * @param {{ playlistName?: string, landingPageName?: string }} [options]
+ */
+export function broadcastModeDescription(modeValue, options = {}) {
+  if (modeValue === 'landing') {
+    return formatLandingBroadcastDescription(options.landingPageName)
+  }
+  if (modeValue === 'voting') {
+    return formatVotingBroadcastDescription(options.playlistName)
+  }
+  const meta = modeMeta(modeValue)
+  return meta?.description ?? ''
+}

@@ -1,9 +1,19 @@
 <script setup>
 import { computed, ref, toValue, watch } from 'vue'
-import { DEFAULT_BROADCAST_MODE, EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
+import { broadcastModeDescription, DEFAULT_BROADCAST_MODE, EVENT_BROADCAST_MODES } from './eventBroadcastModes.js'
 import { formatHebrewDate } from '@/utils/formatHebrewDate'
 import { buildGuestEventQueryUrl } from '@/utils/shareGuestUrl'
-import { broadcastModeFromSharingParams, currentBroadcastFromEvent } from '@/utils/eventSharingModel.js'
+import {
+  broadcastModeFromSharingParams,
+  currentBroadcastFromEvent,
+  parseSharingParams,
+} from '@/utils/eventSharingModel.js'
+import {
+  loadLandingPageName,
+  loadVotingPlaylistName,
+  saveLandingPageName,
+  saveVotingPlaylistName,
+} from '@/utils/eventBroadcastDisplayStorage.js'
 import { extractEventSharingCode, useEventStore } from '@/stores/eventStore'
 import { useUserStore } from '@/stores/UserStore'
 import DisplaySong from '@/components/AppStructure/Tabs/Songs/DisplaySong.vue'
@@ -47,10 +57,49 @@ const activeBroadcastMeta = computed(() =>
   broadcastModes.find((m) => m.value === currentBroadcast.value) || broadcastModes[0],
 )
 
+const votingPlaylistName = ref('')
+const landingPageName = ref('')
+
+function eventIdForStorage(event) {
+  return event?.id ?? event?.Id ?? eventStore.selectedEventId ?? null
+}
+
+function syncBroadcastLabelsFromEvent(event) {
+  const eventId = eventIdForStorage(event)
+  const sp = parseSharingParams(event?.sharingParams ?? event?.SharingParams)
+
+  const playlistFromParams = String(sp?.playlistName ?? '').trim()
+  if (playlistFromParams && eventId != null) {
+    saveVotingPlaylistName(eventId, playlistFromParams)
+    votingPlaylistName.value = playlistFromParams
+  } else {
+    votingPlaylistName.value =
+      eventId != null ? loadVotingPlaylistName(eventId) : ''
+  }
+
+  const landingFromParams = String(
+    sp?.landingPageName ?? sp?.LandingPageName ?? '',
+  ).trim()
+  if (landingFromParams && eventId != null) {
+    saveLandingPageName(eventId, landingFromParams)
+    landingPageName.value = landingFromParams
+  } else {
+    landingPageName.value = eventId != null ? loadLandingPageName(eventId) : ''
+  }
+}
+
+const activeBroadcastDescription = computed(() =>
+  broadcastModeDescription(currentBroadcast.value, {
+    playlistName: currentBroadcast.value === 'voting' ? votingPlaylistName.value : '',
+    landingPageName: currentBroadcast.value === 'landing' ? landingPageName.value : '',
+  }),
+)
+
 watch(
   resolvedEvent,
   (ev) => {
     currentBroadcast.value = currentBroadcastFromEvent(ev)
+    syncBroadcastLabelsFromEvent(ev)
   },
   { immediate: true },
 )
@@ -106,6 +155,24 @@ async function onSharingActivate(sharingParams) {
   try {
     const saved = await eventStore.updateBrodcast(sharingParams)
     currentBroadcast.value = broadcastModeFromSharingParams(saved)
+    const eventId = eventIdForStorage(resolvedEvent.value)
+    const mode = String(saved?.broadcastMode ?? '').trim()
+    if (mode === 'voting') {
+      const name = String(saved?.playlistName ?? sharingParams?.playlistName ?? '').trim()
+      if (name && eventId != null) {
+        saveVotingPlaylistName(eventId, name)
+        votingPlaylistName.value = name
+      }
+    }
+    if (mode === 'landing') {
+      const name = String(
+        saved?.landingPageName ?? sharingParams?.landingPageName ?? '',
+      ).trim()
+      if (name && eventId != null) {
+        saveLandingPageName(eventId, name)
+        landingPageName.value = name
+      }
+    }
     copySnackbarText.value = 'מצב השידור עודכן'
     copySnackbarColor.value = 'success'
     copySnackbar.value = true
@@ -197,7 +264,7 @@ function onDisplaySongClosed() {
         >
           {{ activeBroadcastMeta.label }}
         </v-chip>
-        <span class="text-body-2 text-medium-emphasis">{{ activeBroadcastMeta.description }}</span>
+        <span class="text-body-2 text-medium-emphasis">{{ activeBroadcastDescription }}</span>
       </div>
       <div class="event-detail-control__broadcast-grid">
         <v-btn

@@ -20,7 +20,7 @@ const router = createRouter({
       path: '/guest',
       name: 'guest-event-query',
       meta: { requiresAuth: false, guestFullscreen: true },
-      component: () => import('@/components/AppStructure/Tabs/Events/GuestEventPage.vue'),
+      component: () => import('@/components/AppStructure/Tabs/Guest/GuestEventPage.vue'),
     },
     {
       path: '/guest/:emitCode',
@@ -60,7 +60,7 @@ const router = createRouter({
       path: '/guest/event/:shareCode',
       name: 'guest-event',
       meta: { requiresAuth: false, guestFullscreen: true },
-      component: () => import('@/components/AppStructure/Tabs/Events/GuestEventPage.vue'),
+      component: () => import('@/components/AppStructure/Tabs/Guest/GuestEventPage.vue'),
     },
   ],
 })

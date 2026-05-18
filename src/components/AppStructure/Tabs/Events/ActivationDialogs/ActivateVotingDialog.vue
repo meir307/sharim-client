@@ -110,32 +110,41 @@ async function ensureSongsLoaded() {
   }
 }
 
+/** Preview resolves playlist `{ id }` refs via the song catalog — fetch when dialog opens. */
 watch(
   () => props.modelValue,
   async (open) => {
-    if (!open) return
-    await ensureSongsLoaded()
-    if (playlists.value.length && selectedPlaylistKey.value == null) {
-      selectedPlaylistKey.value = playlistStableKey(playlists.value[0], 0)
-    }
+    if (open) await ensureSongsLoaded()
   },
 )
 
-watch(playlists, (list) => {
-  if (!list.length) {
-    selectedPlaylistKey.value = null
-    return
-  }
-  if (
-    selectedPlaylistKey.value == null ||
-    list.findIndex((p, i) => playlistStableKey(p, i) === String(selectedPlaylistKey.value)) < 0
-  ) {
-    selectedPlaylistKey.value = playlistStableKey(list[0], 0)
-  }
-})
+watch(
+  playlists,
+  (list) => {
+    if (!list.length) {
+      selectedPlaylistKey.value = null
+      return
+    }
+    if (
+      selectedPlaylistKey.value == null ||
+      list.findIndex((p, i) => playlistStableKey(p, i) === String(selectedPlaylistKey.value)) < 0
+    ) {
+      selectedPlaylistKey.value = playlistStableKey(list[0], 0)
+    }
+  },
+  { immediate: true },
+)
 
 function close() {
   emit('update:modelValue', false)
+}
+
+function votingPlaylistForSharing() {
+  return previewSongs.value.map((song) => ({
+    id: song.id,
+    songName: song.name,
+    artist: song.artistName === '—' ? '' : song.artistName,
+  }))
 }
 
 function onActivate() {
@@ -144,6 +153,7 @@ function onActivate() {
       playlistName: playlistDisplayName(selectedPlaylist.value),
       maxSelections: maxSelections.value,
       title: voteTitle.value,
+      playlist: votingPlaylistForSharing(),
     })
     emit('activate', sharingParams)
     close()

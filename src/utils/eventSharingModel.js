@@ -76,7 +76,43 @@ export function buildLandingSharingParams(page, overrides = {}) {
 }
 
 /**
- * @param {{ playlistName: string, maxSelections: number, title: string }} input
+ * @param {unknown} raw
+ * @returns {Array<{ id?: string|number, songName: string, artist: string }>}
+ */
+export function normalizeVotingPlaylistSongs(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const songName = String(
+        entry.songName ?? entry.SongName ?? entry.name ?? entry.Name ?? entry.title ?? entry.Title ?? '',
+      ).trim()
+      if (!songName) return null
+      const artist = String(
+        entry.artist ??
+          entry.Artist ??
+          entry.artistName ??
+          entry.ArtistName ??
+          '',
+      ).trim()
+      const out = { songName, artist }
+      const id = entry.id ?? entry.Id
+      if (id != null && String(id).trim() !== '') {
+        out.id = typeof id === 'number' && Number.isFinite(id) ? id : String(id).trim()
+      }
+      return out
+    })
+    .filter(Boolean)
+}
+
+/**
+ * @param {{
+ *   playlistName: string,
+ *   maxSelections: number,
+ *   title: string,
+ *   playlist?: unknown[],
+ *   songs?: unknown[],
+ * }} input
  */
 export function buildVotingSharingParams(input) {
   const playlistName = String(input?.playlistName ?? '').trim()
@@ -88,11 +124,16 @@ export function buildVotingSharingParams(input) {
   if (!title) {
     throw new Error('יש להזין כותרת להצבעה')
   }
+  const playlist = normalizeVotingPlaylistSongs(input?.playlist ?? input?.songs)
+  if (!playlist.length) {
+    throw new Error('אין שירים בפלייליסט שנבחר')
+  }
   return {
     broadcastMode: 'voting',
     playlistName,
     maxSelections,
     title,
+    playlist,
   }
 }
 
