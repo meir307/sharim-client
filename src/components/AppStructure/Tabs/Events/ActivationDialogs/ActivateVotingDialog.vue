@@ -13,7 +13,12 @@ const emit = defineEmits(['update:modelValue', 'activate'])
 const userStore = useUserStore()
 const selectedPlaylistKey = ref(null)
 const maxSelections = ref(3)
-const voteTitle = ref('בחרו את השירים האהובים עליכם')
+const DEFAULT_VOTE_TITLE = 'בואו נבחר יחד את השירים'
+const DEFAULT_VOTE_BODY =
+  'כדי להפוך את הערב למיוחד, אנחנו מזמינים אתכם להשתתף בבחירת הרפרטואר. ההצבעה קצרה ופשוטה — וביחד ניצור מוזיקה שמתאימה בדיוק לכם.'
+
+const voteTitle = ref(DEFAULT_VOTE_TITLE)
+const voteBody = ref(DEFAULT_VOTE_BODY)
 
 const playlists = computed(() => {
   const raw = userStore.user?.playLists
@@ -153,6 +158,7 @@ function onActivate() {
       playlistName: playlistDisplayName(selectedPlaylist.value),
       maxSelections: maxSelections.value,
       title: voteTitle.value,
+      body: voteBody.value,
       playlist: votingPlaylistForSharing(),
     })
     emit('activate', sharingParams)
@@ -166,13 +172,13 @@ function onActivate() {
 <template>
   <v-dialog
     :model-value="modelValue"
-    max-width="640"
-    width="92%"
+    max-width="880"
+    width="94%"
     scrollable
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <v-card>
+    <v-card class="activate-voting-dialog">
       <v-card-title class="popup-title d-flex align-center justify-space-between">
         <span class="d-flex align-center ga-2">
           <v-icon icon="mdi-vote-outline" color="info" />
@@ -186,8 +192,8 @@ function onActivate() {
           הקהל יבחרו שירים מהפלייליסט שתגדירו.
         </p>
 
-        <v-row dense>
-          <v-col cols="12">
+        <v-row class="activate-voting-dialog__layout" dense>
+          <v-col cols="12" md="6" class="activate-voting-dialog__fields">
             <v-select
               v-model="selectedPlaylistKey"
               label="פלייליסט להצבעה"
@@ -197,17 +203,19 @@ function onActivate() {
               density="comfortable"
               hide-details="auto"
               :disabled="!playlistOptions.length"
+              class="mb-4"
             />
-          </v-col>
-          <v-col cols="12" sm="7">
+            <p v-if="!playlistOptions.length" class="text-caption text-warning mb-4">
+              אין פלייליסטים — הוסף בלשונית פלייליסטים.
+            </p>
+
             <v-text-field
               v-model="voteTitle"
               label="כותרת להצבעה"
               density="comfortable"
               hide-details="auto"
+              class="mb-3"
             />
-          </v-col>
-          <v-col cols="12" sm="5">
             <v-text-field
               v-model.number="maxSelections"
               label="מקסימום שירים לבחירה"
@@ -216,40 +224,56 @@ function onActivate() {
               max="99"
               density="comfortable"
               hide-details="auto"
+              class="mb-3"
+            />
+            <v-textarea
+              v-model="voteBody"
+              label="טקסט גוף (לאורח)"
+              density="comfortable"
+              hide-details="auto"
+              rows="3"
+              auto-grow
             />
           </v-col>
-        </v-row>
-        <p v-if="!playlistOptions.length" class="text-caption text-warning mb-2">
-          אין פלייליסטים — הוסף בלשונית פלייליסטים.
-        </p>
 
-        <div class="text-caption text-medium-emphasis mt-4 mb-2">רשימת השירים שתוצג לקהל</div>
-        <v-card variant="outlined">
-          <v-list
-            v-if="previewSongs.length"
-            density="comfortable"
-            class="py-0 activate-voting-dialog__song-list"
-          >
-            <v-list-item
-              v-for="song in previewSongs"
-              :key="song.id"
-              class="activate-voting-dialog__list-item"
-            >
-              <template #prepend>
-                <v-checkbox-btn :model-value="false" color="primary" density="compact" disabled />
-              </template>
-              <v-list-item-title class="text-body-2 activate-voting-dialog__song-line">
-                <span class="font-weight-medium">{{ song.name }}</span>
-                <span v-if="song.artistName && song.artistName !== '—'" class="text-medium-emphasis">
-                  · {{ song.artistName }}
-                </span>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-          <p v-else class="text-body-2 text-medium-emphasis pa-4 text-center mb-0">
-            אין שירים בפלייליסט שנבחר.
-          </p>
-        </v-card>
+          <v-col cols="12" md="6" class="activate-voting-dialog__playlist-col">
+            <div class="text-caption text-medium-emphasis mb-2">רשימת השירים שתוצג לקהל</div>
+            <v-card variant="outlined" class="activate-voting-dialog__playlist-card">
+              <v-list
+                v-if="previewSongs.length"
+                density="comfortable"
+                class="py-0 activate-voting-dialog__song-list"
+              >
+                <v-list-item
+                  v-for="song in previewSongs"
+                  :key="song.id"
+                  class="activate-voting-dialog__list-item"
+                >
+                  <template #prepend>
+                    <v-checkbox-btn
+                      :model-value="false"
+                      color="primary"
+                      density="compact"
+                      disabled
+                    />
+                  </template>
+                  <v-list-item-title class="text-body-2 activate-voting-dialog__song-line">
+                    <span class="font-weight-medium">{{ song.name }}</span>
+                    <span
+                      v-if="song.artistName && song.artistName !== '—'"
+                      class="text-medium-emphasis"
+                    >
+                      · {{ song.artistName }}
+                    </span>
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+              <p v-else class="text-body-2 text-medium-emphasis pa-4 text-center mb-0">
+                אין שירים בפלייליסט שנבחר.
+              </p>
+            </v-card>
+          </v-col>
+        </v-row>
 
         <div class="popup-btn-row mt-4">
           <v-btn color="info" :disabled="!selectedPlaylist" @click="onActivate">הפעל</v-btn>
@@ -262,9 +286,29 @@ function onActivate() {
 </template>
 
 <style scoped>
-/* ~4 comfortable-density rows, then scroll */
+.activate-voting-dialog__layout {
+  align-items: stretch;
+}
+
+.activate-voting-dialog__playlist-col,
+.activate-voting-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.activate-voting-dialog__playlist-card {
+  flex: 1 1 auto;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .activate-voting-dialog__song-list {
-  max-height: 14rem;
+  flex: 1 1 auto;
+  max-height: min(22rem, 50vh);
   overflow-y: auto;
   overscroll-behavior: contain;
 }

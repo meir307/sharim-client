@@ -54,3 +54,20 @@ export function buildGuestEventQueryUrl(sharingCode) {
   if (!code) return ''
   return absoluteGuestPath(`/guest?ev=${encodeURIComponent(code)}`)
 }
+
+const GUEST_SHARE_MESSAGE_TEMPLATE = `שלום,
+במהלך האירוע אפשר לעקוב אחרי מילות השירים בקישור הייעודי:
+{link}
+
+חשוב: הקישור יהיה זמין דקות ספורות לפני תחילת האירוע.
+נשמח לראותכם!`
+
+/**
+ * Share text for guests: short explanation + link.
+ * @param {string} guestUrl
+ */
+export function buildGuestShareMessage(guestUrl) {
+  const link = String(guestUrl ?? '').trim()
+  if (!link) return ''
+  return GUEST_SHARE_MESSAGE_TEMPLATE.replace('{link}', link)
+}

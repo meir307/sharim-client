@@ -104,7 +104,7 @@ async function saveLandingPage() {
       </p>
 
       <v-row class="upsert-landing-page__layout" dense>
-        <v-col cols="12" md="6" class="upsert-landing-page__fields">
+        <v-col cols="12" md="8" class="upsert-landing-page__fields">
           <v-text-field
             ref="nameFieldRef"
             v-model="form.name"
@@ -155,7 +155,7 @@ async function saveLandingPage() {
           />
         </v-col>
 
-        <v-col cols="12" md="6" class="upsert-landing-page__preview-col">
+        <v-col cols="12" md="4" class="upsert-landing-page__preview-col">
           <div class="text-caption text-medium-emphasis mb-2">תצוגה מקדימה לאורח</div>
           <div class="upsert-landing-page__phone" aria-hidden="true">
             <div class="upsert-landing-page__phone-notch" />
@@ -163,9 +163,9 @@ async function saveLandingPage() {
               <div class="upsert-landing-page__preview-inner text-center">
                 <v-icon
                   :icon="form.icon || 'mdi-clock-outline'"
-                  size="40"
+                  size="32"
                   color="primary"
-                  class="mb-2"
+                  class="mb-1"
                 />
                 <div class="text-subtitle-1 font-weight-medium mb-2">
                   {{ previewTitle || 'כותרת' }}
@@ -199,7 +199,7 @@ async function saveLandingPage() {
 
 <style scoped>
 .upsert-landing-page__layout {
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .upsert-landing-page__fields {
@@ -224,7 +224,15 @@ async function saveLandingPage() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  align-self: flex-start;
+  max-width: 240px;
   padding-inline-start: 8px;
+}
+
+@media (min-width: 960px) {
+  .upsert-landing-page__preview-col {
+    margin-inline-start: auto;
+  }
 }
 
 @media (max-width: 959px) {
@@ -236,11 +244,11 @@ async function saveLandingPage() {
 .upsert-landing-page__phone {
   position: relative;
   width: 100%;
-  max-width: 260px;
-  aspect-ratio: 9 / 19.5;
+  max-width: 200px;
+  aspect-ratio: 9 / 16;
   margin-inline: auto;
-  padding: 10px;
-  border-radius: 32px;
+  padding: 8px;
+  border-radius: 26px;
   background: #1c1c1e;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.22),
@@ -249,11 +257,11 @@ async function saveLandingPage() {
 
 .upsert-landing-page__phone-notch {
   position: absolute;
-  top: 14px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 72px;
-  height: 6px;
+  width: 56px;
+  height: 5px;
   border-radius: 999px;
   background: #0d0d0f;
   z-index: 1;
@@ -262,13 +270,13 @@ async function saveLandingPage() {
 .upsert-landing-page__phone-screen {
   width: 100%;
   height: 100%;
-  border-radius: 24px;
+  border-radius: 20px;
   background: rgb(var(--v-theme-surface));
   overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px 14px 16px;
+  padding: 22px 12px 12px;
   box-sizing: border-box;
 }
 

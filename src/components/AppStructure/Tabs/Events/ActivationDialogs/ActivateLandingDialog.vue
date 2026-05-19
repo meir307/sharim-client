@@ -122,12 +122,19 @@ function onActivate() {
       </v-card-title>
 
       <v-card-text class="pt-2">
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          הקהל יראו מסך סטטי — התחלה, הפסקה, סיום, תודה או הודעה.
-        </p>
+        <v-row class="activate-landing-dialog__intro-row" dense align="center">
+          <v-col cols="12" md="8" class="activate-landing-dialog__intro-fields">
+            <p class="text-body-2 text-medium-emphasis mb-0">
+              הקהל יראו מסך סטטי על פי בחירתך.
+            </p>
+          </v-col>
+          <v-col cols="12" md="4" class="activate-landing-dialog__intro-preview">
+            <p class="text-caption text-medium-emphasis mb-0">תצוגה מקדימה לאורח</p>
+          </v-col>
+        </v-row>
 
         <v-row class="activate-landing-dialog__layout" dense>
-          <v-col cols="12" md="6" class="activate-landing-dialog__fields">
+          <v-col cols="12" md="8" class="activate-landing-dialog__fields">
             <v-select
               v-model="selectedPageKey"
               label="דף נחיתה"
@@ -144,7 +151,6 @@ function onActivate() {
             </p>
 
             <template v-if="selectedPage">
-              
               <v-text-field
                 v-model="editTitle"
                 label="כותרת (לאורח)"
@@ -183,8 +189,7 @@ function onActivate() {
             </template>
           </v-col>
 
-          <v-col cols="12" md="6" class="activate-landing-dialog__preview-col">
-            <div class="text-caption text-medium-emphasis mb-2">תצוגה מקדימה לאורח</div>
+          <v-col cols="12" md="4" class="activate-landing-dialog__preview-col">
             <div class="activate-landing-dialog__phone" aria-hidden="true">
               <div class="activate-landing-dialog__phone-notch" />
               <div
@@ -195,9 +200,9 @@ function onActivate() {
                 <div class="activate-landing-dialog__preview-inner text-center">
                   <v-icon
                     :icon="selectedPage.icon || 'mdi-clock-outline'"
-                    size="40"
+                    size="32"
                     color="primary"
-                    class="mb-2"
+                    class="mb-1"
                   />
                   <div class="text-subtitle-1 font-weight-medium mb-2">
                     {{ editTitle || 'כותרת' }}
@@ -233,13 +238,34 @@ function onActivate() {
 </template>
 
 <style scoped>
+.activate-landing-dialog__intro-row {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 960px) {
+  .activate-landing-dialog__intro-fields,
+  .activate-landing-dialog__intro-preview {
+    display: flex;
+    align-items: center;
+    min-height: 2.5rem;
+  }
+}
+
 .activate-landing-dialog__layout {
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .activate-landing-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-self: stretch;
   border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   padding-inline-end: 16px;
+}
+
+.activate-landing-dialog__fields > * {
+  flex: 0 0 auto;
 }
 
 @media (max-width: 959px) {
@@ -272,7 +298,21 @@ function onActivate() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  align-self: flex-start;
+  min-height: 0;
+  max-width: 240px;
   padding-inline-start: 8px;
+}
+
+@media (min-width: 960px) {
+  .activate-landing-dialog__intro-preview {
+    max-width: 240px;
+    margin-inline-start: auto;
+  }
+}
+
+.activate-landing-dialog__preview-col > * {
+  flex: 0 0 auto;
 }
 
 @media (max-width: 959px) {
@@ -284,11 +324,11 @@ function onActivate() {
 .activate-landing-dialog__phone {
   position: relative;
   width: 100%;
-  max-width: 260px;
-  aspect-ratio: 9 / 19.5;
+  max-width: 200px;
+  aspect-ratio: 9 / 16;
   margin-inline: auto;
-  padding: 10px;
-  border-radius: 32px;
+  padding: 8px;
+  border-radius: 26px;
   background: #1c1c1e;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.22),
@@ -297,11 +337,11 @@ function onActivate() {
 
 .activate-landing-dialog__phone-notch {
   position: absolute;
-  top: 14px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 72px;
-  height: 6px;
+  width: 56px;
+  height: 5px;
   border-radius: 999px;
   background: #0d0d0f;
   z-index: 1;
@@ -310,13 +350,13 @@ function onActivate() {
 .activate-landing-dialog__phone-screen {
   width: 100%;
   height: 100%;
-  border-radius: 24px;
+  border-radius: 20px;
   background: rgb(var(--v-theme-surface));
   overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px 14px 16px;
+  padding: 22px 12px 12px;
   box-sizing: border-box;
 }
 

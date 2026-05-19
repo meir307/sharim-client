@@ -110,6 +110,7 @@ export function normalizeVotingPlaylistSongs(raw) {
  *   playlistName: string,
  *   maxSelections: number,
  *   title: string,
+ *   body?: string,
  *   playlist?: unknown[],
  *   songs?: unknown[],
  * }} input
@@ -128,11 +129,13 @@ export function buildVotingSharingParams(input) {
   if (!playlist.length) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
+  const body = String(input?.body ?? '').trim()
   return {
     broadcastMode: 'voting',
     playlistName,
     maxSelections,
     title,
+    body,
     playlist,
   }
 }
@@ -152,13 +155,14 @@ export function buildLyricsSharingParams(playlistName) {
 }
 
 /**
- * @param {{ title: string, questions: Array<Record<string, unknown>> }} input
+ * @param {{ title: string, body?: string, questions: Array<Record<string, unknown>> }} input
  */
 export function buildFeedbackSharingParams(input) {
   const title = String(input?.title ?? '').trim()
   if (!title) {
     throw new Error('יש להזין כותרת למשוב')
   }
+  const body = String(input?.body ?? '').trim()
   const questions = Array.isArray(input?.questions) ? input.questions : []
   if (!questions.length) {
     throw new Error('אין שאלות משוב — הוסף שאלות בהגדרות')
@@ -166,6 +170,7 @@ export function buildFeedbackSharingParams(input) {
   return {
     broadcastMode: 'feedback',
     title,
+    body,
     questions: questions.map((q) => ({
       id: q.id ?? q.Id,
       text: String(q.text ?? q.Text ?? '').trim(),
