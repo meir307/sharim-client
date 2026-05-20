@@ -7,6 +7,7 @@ import {
   broadcastModeFromSharingParams,
   currentBroadcastFromEvent,
   parseSharingParams,
+  withEventNameInSharingParams,
 } from '@/utils/eventSharingModel.js'
 import {
   loadLandingPageName,
@@ -42,6 +43,17 @@ const propEvent = computed(() => toValue(props.event))
 const resolvedEvent = computed(
   () => eventStore.selectedEvent ?? propEvent.value,
 )
+
+const resolvedEventName = computed(() =>
+  String(resolvedEvent.value?.name ?? resolvedEvent.value?.Name ?? '').trim(),
+)
+
+function sharingParamsForBroadcast(sharingParams) {
+  return withEventNameInSharingParams(
+    sharingParams && typeof sharingParams === 'object' ? { ...sharingParams } : sharingParams,
+    resolvedEventName.value,
+  )
+}
 
 const sharingCode = computed(() => extractEventSharingCode(resolvedEvent.value))
 
@@ -155,12 +167,13 @@ async function ensureSongsLoaded() {
 async function onSharingActivate(sharingParams) {
   activating.value = true
   try {
-    const saved = await eventStore.updateBrodcast(sharingParams)
+    const payload = sharingParamsForBroadcast(sharingParams)
+    const saved = await eventStore.updateBrodcast(payload)
     currentBroadcast.value = broadcastModeFromSharingParams(saved)
     const eventId = eventIdForStorage(resolvedEvent.value)
     const mode = String(saved?.broadcastMode ?? '').trim()
     if (mode === 'voting') {
-      const name = String(saved?.playlistName ?? sharingParams?.playlistName ?? '').trim()
+      const name = String(saved?.playlistName ?? payload?.playlistName ?? '').trim()
       if (name && eventId != null) {
         saveVotingPlaylistName(eventId, name)
         votingPlaylistName.value = name
@@ -168,7 +181,7 @@ async function onSharingActivate(sharingParams) {
     }
     if (mode === 'landing') {
       const name = String(
-        saved?.landingPageName ?? sharingParams?.landingPageName ?? '',
+        saved?.landingPageName ?? payload?.landingPageName ?? '',
       ).trim()
       if (name && eventId != null) {
         saveLandingPageName(eventId, name)
@@ -188,7 +201,7 @@ async function onSharingActivate(sharingParams) {
 async function onLyricsActivate({ playlist, sharingParams }) {
   activating.value = true
   try {
-    const saved = await eventStore.updateBrodcast(sharingParams)
+    const saved = await eventStore.updateBrodcast(sharingParamsForBroadcast(sharingParams))
     currentBroadcast.value = broadcastModeFromSharingParams(saved)
     await ensureSongsLoaded()
     displaySongPlaylist.value = playlist && typeof playlist === 'object' ? { ...playlist } : null
@@ -282,10 +295,26 @@ function onDisplaySongClosed() {
     </div>
   </div>
 
-  <ActivateLandingDialog v-model="showLandingDialog" @activate="onSharingActivate" />
-  <ActivateVotingDialog v-model="showVotingDialog" @activate="onSharingActivate" />
-  <ActivateLyricsDialog v-model="showLyricsDialog" @activate="onLyricsActivate" />
-  <ActivateFeedbackDialog v-model="showFeedbackDialog" @activate="onSharingActivate" />
+  <ActivateLandingDialog
+    v-model="showLandingDialog"
+    :event-name="resolvedEventName"
+    @activate="onSharingActivate"
+  />
+  <ActivateVotingDialog
+    v-model="showVotingDialog"
+    :event-name="resolvedEventName"
+    @activate="onSharingActivate"
+  />
+  <ActivateLyricsDialog
+    v-model="showLyricsDialog"
+    :event-name="resolvedEventName"
+    @activate="onLyricsActivate"
+  />
+  <ActivateFeedbackDialog
+    v-model="showFeedbackDialog"
+    :event-name="resolvedEventName"
+    @activate="onSharingActivate"
+  />
 
   <DisplaySong
     v-model="showDisplaySong"

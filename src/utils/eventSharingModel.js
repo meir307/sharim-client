@@ -39,6 +39,26 @@ export function broadcastModeFromSharingParams(sharingParams) {
 }
 
 /**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {string}
+ */
+export function eventNameFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  if (!sp) return ''
+  return String(sp.eventName ?? sp.EventName ?? '').trim()
+}
+
+/**
+ * @param {Record<string, unknown>} params
+ * @param {string} [eventName]
+ */
+export function withEventNameInSharingParams(params, eventName) {
+  const name = String(eventName ?? '').trim()
+  if (!name) return { ...params }
+  return { ...params, eventName: name }
+}
+
+/**
  * @param {Record<string, unknown> | null | undefined} event
  * @returns {BroadcastMode}
  */
@@ -49,7 +69,7 @@ export function currentBroadcastFromEvent(event) {
 
 /**
  * @param {Record<string, unknown> | null | undefined} page
- * @param {{ title?: string, body?: string }} [overrides] — guest copy for this activation only (not saved to settings)
+ * @param {{ title?: string, body?: string, eventName?: string }} [overrides] — guest copy for this activation only (not saved to settings)
  */
 export function buildLandingSharingParams(page, overrides = {}) {
   if (!page || typeof page !== 'object') {
@@ -65,14 +85,17 @@ export function buildLandingSharingParams(page, overrides = {}) {
   if (!title) {
     throw new Error('יש להזין כותרת לאורח')
   }
-  return {
-    broadcastMode: 'landing',
-    landingPageName,
-    title,
-    body: String(overrides.body ?? overrides.Body ?? page.body ?? page.Body ?? '').trim(),
-    icon: String(page.icon ?? page.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
-    showSpinner: Boolean(page.showSpinner ?? page.ShowSpinner ?? false),
-  }
+  return withEventNameInSharingParams(
+    {
+      broadcastMode: 'landing',
+      landingPageName,
+      title,
+      body: String(overrides.body ?? overrides.Body ?? page.body ?? page.Body ?? '').trim(),
+      icon: String(page.icon ?? page.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
+      showSpinner: Boolean(page.showSpinner ?? page.ShowSpinner ?? false),
+    },
+    overrides.eventName ?? overrides.EventName,
+  )
 }
 
 /**
@@ -113,6 +136,7 @@ export function normalizeVotingPlaylistSongs(raw) {
  *   body?: string,
  *   playlist?: unknown[],
  *   songs?: unknown[],
+ *   eventName?: string,
  * }} input
  */
 export function buildVotingSharingParams(input) {
@@ -130,32 +154,39 @@ export function buildVotingSharingParams(input) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
   const body = String(input?.body ?? '').trim()
-  return {
-    broadcastMode: 'voting',
-    playlistName,
-    maxSelections,
-    title,
-    body,
-    playlist,
-  }
+  return withEventNameInSharingParams(
+    {
+      broadcastMode: 'voting',
+      playlistName,
+      maxSelections,
+      title,
+      body,
+      playlist,
+    },
+    input?.eventName ?? input?.EventName,
+  )
 }
 
 /**
  * @param {string} playlistName
+ * @param {string} [eventName]
  */
-export function buildLyricsSharingParams(playlistName) {
+export function buildLyricsSharingParams(playlistName, eventName) {
   const name = String(playlistName ?? '').trim()
   if (!name) {
     throw new Error('יש לבחור פלייליסט')
   }
-  return {
-    broadcastMode: 'lyrics',
-    playlistName: name,
-  }
+  return withEventNameInSharingParams(
+    {
+      broadcastMode: 'lyrics',
+      playlistName: name,
+    },
+    eventName,
+  )
 }
 
 /**
- * @param {{ title: string, body?: string, questions: Array<Record<string, unknown>> }} input
+ * @param {{ title: string, body?: string, questions: Array<Record<string, unknown>>, eventName?: string }} input
  */
 export function buildFeedbackSharingParams(input) {
   const title = String(input?.title ?? '').trim()
@@ -167,16 +198,19 @@ export function buildFeedbackSharingParams(input) {
   if (!questions.length) {
     throw new Error('אין שאלות משוב — הוסף שאלות בהגדרות')
   }
-  return {
-    broadcastMode: 'feedback',
-    title,
-    body,
-    questions: questions.map((q) => ({
-      id: q.id ?? q.Id,
-      text: String(q.text ?? q.Text ?? '').trim(),
-      type: q.type === 'text' ? 'text' : 'stars',
-    })),
-  }
+  return withEventNameInSharingParams(
+    {
+      broadcastMode: 'feedback',
+      title,
+      body,
+      questions: questions.map((q) => ({
+        id: q.id ?? q.Id,
+        text: String(q.text ?? q.Text ?? '').trim(),
+        type: q.type === 'text' ? 'text' : 'stars',
+      })),
+    },
+    input?.eventName ?? input?.EventName,
+  )
 }
 
 /**

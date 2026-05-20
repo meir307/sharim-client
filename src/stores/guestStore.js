@@ -1,18 +1,30 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useUserStore } from './UserStore'
-import { normalizeEventFromApi } from './eventStore'
-import { broadcastModeFromSharingParams } from '@/utils/eventSharingModel.js'
+import {
+  broadcastModeFromSharingParams,
+  eventNameFromSharingParams,
+  parseSharingParams,
+} from '@/utils/eventSharingModel.js'
 
-function eventFromResponseData(data) {
-  if (!data || typeof data !== 'object') return null
+/**
+ * @param {unknown} data
+ * @returns {Record<string, unknown>}
+ */
+function sharingParamsFromResponseData(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('תשובה לא תקינה מהשרת')
+  }
   if (data.success === false || data.Success === false) {
     const message =
       data.errorMessage ?? data.ErrorMessage ?? data.message ?? data.Message ?? 'הפעולה נכשלה'
     throw new Error(String(message))
   }
-  const raw = data.event ?? data.Event ?? data
-  return normalizeEventFromApi(raw)
+  const parsed = parseSharingParams(data.sharingParams ?? data.SharingParams)
+  if (!parsed) {
+    throw new Error('שידור לא נמצא או לא פעיל')
+  }
+  return parsed
 }
 
 export const useGuestStore = defineStore('GuestStore', {
@@ -26,10 +38,10 @@ export const useGuestStore = defineStore('GuestStore', {
   }),
 
   actions: {
-  /**
-   * `POST event/FetchGuestEvent` by sharing code (`?ev=`).
-   * @param {string} sharingCode
-   */
+    /**
+     * `POST event/FetchGuestEvent` by sharing code (`?ev=`).
+     * @param {string} sharingCode
+     */
     async loadBySharingCode(sharingCode) {
       const userStore = useUserStore()
       const code = String(sharingCode ?? '').trim()
@@ -47,13 +59,10 @@ export const useGuestStore = defineStore('GuestStore', {
         const response = await axios.post(userStore.apiUrl + 'event/FetchGuestEvent', {
           sharingCode: code,
         })
-        const event = eventFromResponseData(response.data)
-        if (!event) {
-          throw new Error('אירוע לא נמצא')
-        }
-        this.eventName = String(event.name ?? '').trim() || 'אירוע'
-        this.sharingParams = event.sharingParams ?? null
-        this.broadcastMode = broadcastModeFromSharingParams(this.sharingParams)
+        const sharingParams = sharingParamsFromResponseData(response.data)
+        this.sharingParams = sharingParams
+        this.eventName = eventNameFromSharingParams(sharingParams) || 'אירוע'
+        this.broadcastMode = broadcastModeFromSharingParams(sharingParams)
       } catch (err) {
         const resData = err?.response?.data ?? {}
         this.error = String(

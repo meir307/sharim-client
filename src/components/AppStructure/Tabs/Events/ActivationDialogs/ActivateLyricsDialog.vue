@@ -5,6 +5,7 @@ import { buildLyricsSharingParams, playlistDisplayName } from '@/utils/eventShar
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
+  eventName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'activate'])
@@ -71,7 +72,7 @@ function onActivate() {
     if (!pl) {
       throw new Error('יש לבחור פלייליסט')
     }
-    const sharingParams = buildLyricsSharingParams(playlistDisplayName(pl))
+    const sharingParams = buildLyricsSharingParams(playlistDisplayName(pl), props.eventName)
     emit('activate', {
       playlist: { ...pl },
       sharingParams,
