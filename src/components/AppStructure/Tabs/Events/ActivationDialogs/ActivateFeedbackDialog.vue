@@ -5,7 +5,6 @@ import { buildFeedbackSharingParams } from '@/utils/eventSharingModel.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  eventName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'activate'])
@@ -67,7 +66,6 @@ function onActivate() {
       title: String(feedbackTitle.value ?? '').replace(/\s*\n+\s*/g, ' ').trim(),
       body: feedbackBody.value,
       questions: selected,
-      eventName: props.eventName,
     })
     emit('activate', sharingParams)
     close()

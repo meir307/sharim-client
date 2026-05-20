@@ -6,7 +6,6 @@ import { buildVotingSharingParams, playlistDisplayName } from '@/utils/eventShar
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  eventName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'activate'])
@@ -161,7 +160,6 @@ function onActivate() {
       title: voteTitle.value,
       body: voteBody.value,
       playlist: votingPlaylistForSharing(),
-      eventName: props.eventName,
     })
     emit('activate', sharingParams)
     close()

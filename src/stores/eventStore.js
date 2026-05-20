@@ -300,7 +300,9 @@ export const useEventStore = defineStore('EventStore', {
         )
         assertApiSuccess(response.data, 'עדכון השידור נכשל')
 
-        const parsed = parseSharingParams(sharingParams)
+        const resEvent = response.data?.event ?? response.data?.Event
+        const fromServer = parseSharingParams(resEvent?.sharingParams ?? resEvent?.SharingParams)
+        const parsed = fromServer ?? parseSharingParams(sharingParams)
         if (this.selectedEvent && String(this.selectedEvent.id) === String(id)) {
           this.selectedEvent = { ...this.selectedEvent, sharingParams: parsed }
         }

@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGuestStore } from '@/stores/guestStore'
+import { guestBroadcastModeChangeMessage } from '@/components/AppStructure/Tabs/Events/eventBroadcastModes.js'
 import GuestLandingView from './GuestLandingView.vue'
 import GuestVotingView from './GuestVotingView.vue'
 import GuestLyricsView from './GuestLyricsView.vue'
@@ -19,6 +20,9 @@ const modeComponents = {
 
 const activeComponent = computed(() => modeComponents[guestStore.broadcastMode] ?? null)
 
+const modeSnackbar = ref(false)
+const modeSnackbarText = ref('')
+
 function sharingCodeFromRoute() {
   const ev = route.query.ev
   const q = Array.isArray(ev) ? ev[0] : ev
@@ -28,11 +32,26 @@ function sharingCodeFromRoute() {
   return ''
 }
 
-function load() {
-  guestStore.loadBySharingCode(sharingCodeFromRoute())
+async function load() {
+  guestStore.stopBroadcastPolling()
+  await guestStore.loadBySharingCode(sharingCodeFromRoute())
 }
 
+watch(
+  () => guestStore.broadcastModeJustChanged,
+  (changed) => {
+    if (!changed) return
+    modeSnackbarText.value = guestBroadcastModeChangeMessage(guestStore.broadcastMode)
+    modeSnackbar.value = true
+    guestStore.clearBroadcastModeJustChanged()
+  },
+)
+
 onMounted(load)
+
+onUnmounted(() => {
+  guestStore.stopBroadcastPolling()
+})
 
 watch(() => [route.query.ev, route.params.shareCode], load)
 </script>
@@ -74,6 +93,10 @@ watch(() => [route.query.ev, route.params.shareCode], load)
         </p>
       </template>
     </div>
+
+    <v-snackbar v-model="modeSnackbar" location="bottom" color="primary" :timeout="4000">
+      {{ modeSnackbarText }}
+    </v-snackbar>
   </div>
 </template>
 

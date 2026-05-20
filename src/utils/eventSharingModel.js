@@ -3,6 +3,38 @@ import { DEFAULT_BROADCAST_MODE } from '@/components/AppStructure/Tabs/Events/ev
 /** @typedef {'landing'|'voting'|'lyrics'|'feedback'} BroadcastMode */
 
 /**
+ * Guest-facing `sharingParams` (from `FetchGuestEvent` / poll):
+ * - `broadcastMode`, `eventName` (set by server on activate), `secondsToSleep` (poll interval)
+ * - plus mode-specific fields from the activation builders below.
+ */
+
+/** Default guest poll interval when `secondsToSleep` is missing (seconds). */
+export const DEFAULT_SECONDS_TO_SLEEP = 5
+
+const MIN_SECONDS_TO_SLEEP = 2
+const MAX_SECONDS_TO_SLEEP = 120
+
+/**
+ * @param {unknown} value
+ * @returns {number}
+ */
+export function normalizeSecondsToSleep(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return DEFAULT_SECONDS_TO_SLEEP
+  return Math.min(MAX_SECONDS_TO_SLEEP, Math.max(MIN_SECONDS_TO_SLEEP, Math.floor(n)))
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {number}
+ */
+export function secondsToSleepFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  if (!sp) return DEFAULT_SECONDS_TO_SLEEP
+  return normalizeSecondsToSleep(sp.secondsToSleep ?? sp.SecondsToSleep)
+}
+
+/**
  * @param {unknown} raw
  * @returns {Record<string, unknown> | null}
  */
@@ -50,12 +82,13 @@ export function eventNameFromSharingParams(sharingParams) {
 
 /**
  * @param {Record<string, unknown>} params
- * @param {string} [eventName]
+ * @param {{ secondsToSleep?: number }} [options]
  */
-export function withEventNameInSharingParams(params, eventName) {
-  const name = String(eventName ?? '').trim()
-  if (!name) return { ...params }
-  return { ...params, eventName: name }
+function withGuestPollDefaults(params, options = {}) {
+  const secondsToSleep = normalizeSecondsToSleep(
+    options.secondsToSleep ?? params.secondsToSleep,
+  )
+  return { ...params, secondsToSleep }
 }
 
 /**
@@ -69,7 +102,7 @@ export function currentBroadcastFromEvent(event) {
 
 /**
  * @param {Record<string, unknown> | null | undefined} page
- * @param {{ title?: string, body?: string, eventName?: string }} [overrides] — guest copy for this activation only (not saved to settings)
+ * @param {{ title?: string, body?: string, secondsToSleep?: number }} [overrides]
  */
 export function buildLandingSharingParams(page, overrides = {}) {
   if (!page || typeof page !== 'object') {
@@ -85,17 +118,14 @@ export function buildLandingSharingParams(page, overrides = {}) {
   if (!title) {
     throw new Error('יש להזין כותרת לאורח')
   }
-  return withEventNameInSharingParams(
-    {
-      broadcastMode: 'landing',
-      landingPageName,
-      title,
-      body: String(overrides.body ?? overrides.Body ?? page.body ?? page.Body ?? '').trim(),
-      icon: String(page.icon ?? page.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
-      showSpinner: Boolean(page.showSpinner ?? page.ShowSpinner ?? false),
-    },
-    overrides.eventName ?? overrides.EventName,
-  )
+  return withGuestPollDefaults({
+    broadcastMode: 'landing',
+    landingPageName,
+    title,
+    body: String(overrides.body ?? overrides.Body ?? page.body ?? page.Body ?? '').trim(),
+    icon: String(page.icon ?? page.Icon ?? 'mdi-clock-outline').trim() || 'mdi-clock-outline',
+    showSpinner: Boolean(page.showSpinner ?? page.ShowSpinner ?? false),
+  }, overrides)
 }
 
 /**
@@ -136,7 +166,7 @@ export function normalizeVotingPlaylistSongs(raw) {
  *   body?: string,
  *   playlist?: unknown[],
  *   songs?: unknown[],
- *   eventName?: string,
+ *   secondsToSleep?: number,
  * }} input
  */
 export function buildVotingSharingParams(input) {
@@ -154,7 +184,7 @@ export function buildVotingSharingParams(input) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
   const body = String(input?.body ?? '').trim()
-  return withEventNameInSharingParams(
+  return withGuestPollDefaults(
     {
       broadcastMode: 'voting',
       playlistName,
@@ -163,30 +193,35 @@ export function buildVotingSharingParams(input) {
       body,
       playlist,
     },
-    input?.eventName ?? input?.EventName,
+    input,
   )
 }
 
 /**
  * @param {string} playlistName
- * @param {string} [eventName]
+ * @param {{ secondsToSleep?: number }} [options]
  */
-export function buildLyricsSharingParams(playlistName, eventName) {
+export function buildLyricsSharingParams(playlistName, options = {}) {
   const name = String(playlistName ?? '').trim()
   if (!name) {
     throw new Error('יש לבחור פלייליסט')
   }
-  return withEventNameInSharingParams(
+  return withGuestPollDefaults(
     {
       broadcastMode: 'lyrics',
       playlistName: name,
     },
-    eventName,
+    options,
   )
 }
 
 /**
- * @param {{ title: string, body?: string, questions: Array<Record<string, unknown>>, eventName?: string }} input
+ * @param {{
+ *   title: string,
+ *   body?: string,
+ *   questions: Array<Record<string, unknown>>,
+ *   secondsToSleep?: number,
+ * }} input
  */
 export function buildFeedbackSharingParams(input) {
   const title = String(input?.title ?? '').trim()
@@ -198,7 +233,7 @@ export function buildFeedbackSharingParams(input) {
   if (!questions.length) {
     throw new Error('אין שאלות משוב — הוסף שאלות בהגדרות')
   }
-  return withEventNameInSharingParams(
+  return withGuestPollDefaults(
     {
       broadcastMode: 'feedback',
       title,
@@ -209,7 +244,7 @@ export function buildFeedbackSharingParams(input) {
         type: q.type === 'text' ? 'text' : 'stars',
       })),
     },
-    input?.eventName ?? input?.EventName,
+    input,
   )
 }
 

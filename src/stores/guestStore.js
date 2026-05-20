@@ -5,7 +5,11 @@ import {
   broadcastModeFromSharingParams,
   eventNameFromSharingParams,
   parseSharingParams,
+  secondsToSleepFromSharingParams,
 } from '@/utils/eventSharingModel.js'
+
+/** @type {ReturnType<typeof setInterval> | null} */
+let broadcastPollTimerId = null
 
 /**
  * @param {unknown} data
@@ -27,49 +31,164 @@ function sharingParamsFromResponseData(data) {
   return parsed
 }
 
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {string}
+ */
+function sharingParamsFingerprint(sharingParams) {
+  if (!sharingParams || typeof sharingParams !== 'object') return ''
+  try {
+    return JSON.stringify(sharingParams)
+  } catch {
+    return ''
+  }
+}
+
 export const useGuestStore = defineStore('GuestStore', {
   state: () => ({
     loading: false,
     error: '',
     sharingCode: '',
-    eventName: '',
     sharingParams: null,
     broadcastMode: 'landing',
+    /** Set when a silent poll detects a new broadcastMode (for snackbar). */
+    broadcastModeJustChanged: false,
+    _sharingParamsFingerprint: '',
+    _pollSecondsToSleep: null,
   }),
+
+  getters: {
+    eventName(state) {
+      const name = eventNameFromSharingParams(state.sharingParams)
+      return name || 'אירוע'
+    },
+  },
 
   actions: {
     /**
-     * `POST event/FetchGuestEvent` by sharing code (`?ev=`).
+     * @param {Record<string, unknown>} parsed
+     * @returns {boolean} true if state updated
+     */
+    applySharingParams(parsed) {
+      const fp = sharingParamsFingerprint(parsed)
+      if (fp === this._sharingParamsFingerprint) {
+        return false
+      }
+
+      const hadParams = this.sharingParams != null
+      const prevMode = this.broadcastMode
+      const nextMode = broadcastModeFromSharingParams(parsed)
+
+      this.sharingParams = parsed
+      this.broadcastMode = nextMode
+      this._sharingParamsFingerprint = fp
+
+      if (hadParams && prevMode !== nextMode) {
+        this.broadcastModeJustChanged = true
+      }
+
+      return true
+    },
+
+    clearBroadcastModeJustChanged() {
+      this.broadcastModeJustChanged = false
+    },
+
+    stopBroadcastPolling() {
+      if (broadcastPollTimerId != null) {
+        clearInterval(broadcastPollTimerId)
+        broadcastPollTimerId = null
+      }
+      this._pollSecondsToSleep = null
+    },
+
+    restartBroadcastPolling() {
+      this.stopBroadcastPolling()
+      this.startBroadcastPolling()
+    },
+
+    startBroadcastPolling() {
+      this.stopBroadcastPolling()
+      if (!String(this.sharingCode ?? '').trim() || !this.sharingParams) {
+        return
+      }
+
+      const seconds = secondsToSleepFromSharingParams(this.sharingParams)
+      this._pollSecondsToSleep = seconds
+      const intervalMs = seconds * 1000
+
+      broadcastPollTimerId = setInterval(() => {
+        this.refreshSharingParams({ silent: true }).catch(() => {})
+      }, intervalMs)
+    },
+
+    /**
+     * `POST event/FetchGuestEvent` — in-memory broadcast snapshot (no DB on server).
+     * @param {{ silent?: boolean }} [options]
+     */
+    async refreshSharingParams(options = {}) {
+      const silent = Boolean(options.silent)
+      const userStore = useUserStore()
+      const code = String(this.sharingCode ?? '').trim()
+      if (!code) return false
+
+      try {
+        const response = await axios.post(userStore.apiUrl + 'event/FetchGuestEvent', {
+          sharingCode: code,
+        })
+        const parsed = sharingParamsFromResponseData(response.data)
+        const prevSeconds = this._pollSecondsToSleep
+        const nextSeconds = secondsToSleepFromSharingParams(parsed)
+        const updated = this.applySharingParams(parsed)
+
+        if (updated && prevSeconds != null && prevSeconds !== nextSeconds) {
+          this.restartBroadcastPolling()
+        }
+
+        return updated
+      } catch (err) {
+        if (!silent) {
+          throw err
+        }
+        return false
+      }
+    },
+
+    /**
+     * Initial load by sharing code (`?ev=`).
      * @param {string} sharingCode
      */
     async loadBySharingCode(sharingCode) {
       const userStore = useUserStore()
       const code = String(sharingCode ?? '').trim()
       if (!code) {
+        this.stopBroadcastPolling()
         this.error = 'חסר קוד שיתוף בקישור'
         this.sharingParams = null
+        this._sharingParamsFingerprint = ''
         return
       }
 
       this.loading = true
       this.error = ''
       this.sharingCode = code
+      this.broadcastModeJustChanged = false
 
       try {
         const response = await axios.post(userStore.apiUrl + 'event/FetchGuestEvent', {
           sharingCode: code,
         })
         const sharingParams = sharingParamsFromResponseData(response.data)
-        this.sharingParams = sharingParams
-        this.eventName = eventNameFromSharingParams(sharingParams) || 'אירוע'
-        this.broadcastMode = broadcastModeFromSharingParams(sharingParams)
+        this.applySharingParams(sharingParams)
+        this.startBroadcastPolling()
       } catch (err) {
+        this.stopBroadcastPolling()
         const resData = err?.response?.data ?? {}
         this.error = String(
           resData.message ?? resData.errorMessage ?? err?.message ?? 'לא ניתן לטעון את האירוע',
         ).trim()
-        this.eventName = ''
         this.sharingParams = null
+        this._sharingParamsFingerprint = ''
         this.broadcastMode = 'landing'
       } finally {
         this.loading = false
@@ -77,12 +196,14 @@ export const useGuestStore = defineStore('GuestStore', {
     },
 
     reset() {
+      this.stopBroadcastPolling()
       this.loading = false
       this.error = ''
       this.sharingCode = ''
-      this.eventName = ''
       this.sharingParams = null
       this.broadcastMode = 'landing'
+      this.broadcastModeJustChanged = false
+      this._sharingParamsFingerprint = ''
     },
   },
 })

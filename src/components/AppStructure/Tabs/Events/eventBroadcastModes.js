@@ -74,3 +74,13 @@ export function broadcastModeDescription(modeValue, options = {}) {
   const meta = modeMeta(modeValue)
   return meta?.description ?? ''
 }
+
+/**
+ * Short Hebrew message when the host switches guest broadcast mode.
+ * @param {string} modeValue
+ */
+export function guestBroadcastModeChangeMessage(modeValue) {
+  const meta = modeMeta(modeValue)
+  if (!meta) return 'מצב השידור עודכן'
+  return `המנחה הפעיל: ${meta.label}`
+}

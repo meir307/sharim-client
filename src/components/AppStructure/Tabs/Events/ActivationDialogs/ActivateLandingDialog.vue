@@ -9,7 +9,6 @@ import { buildLandingSharingParams } from '@/utils/eventSharingModel.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  eventName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['update:modelValue', 'activate'])
@@ -95,7 +94,6 @@ function onActivate() {
     const sharingParams = buildLandingSharingParams(selectedPage.value, {
       title: editTitle.value,
       body: editBody.value,
-      eventName: props.eventName,
     })
     emit('activate', sharingParams)
     close()
