@@ -36,16 +36,6 @@ export function buildGuestWordsShareUrl(emitCode) {
 }
 
 /**
- * Absolute URL to the unified guest event page.
- * @param {string | number | null | undefined} shareCode
- */
-export function buildGuestEventShareUrl(shareCode) {
-  const code = String(shareCode ?? '').trim()
-  if (!code) return ''
-  return absoluteGuestPath(`/guest/event/${encodeURIComponent(code)}`)
-}
-
-/**
  * Guest event link: `https://[domain]/guest?ev=[sharingCode]`
  * @param {string | number | null | undefined} sharingCode
  */

@@ -50,14 +50,17 @@ watch(
 onMounted(load)
 
 onUnmounted(() => {
-  guestStore.stopBroadcastPolling()
+  guestStore.reset()
 })
 
 watch(() => [route.query.ev, route.params.shareCode], load)
 </script>
 
 <template>
-  <div class="guest-event">
+  <div
+    class="guest-event"
+    :class="{ 'guest-event--lyrics': guestStore.broadcastMode === 'lyrics' && guestStore.sharingParams }"
+  >
     <div class="guest-event__container">
       <v-progress-linear
         v-if="guestStore.loading"
@@ -76,7 +79,10 @@ watch(() => [route.query.ev, route.params.shareCode], load)
       </v-alert>
 
       <template v-else-if="guestStore.sharingParams">
-        <div class="guest-event__header text-center">
+        <div
+          v-if="guestStore.broadcastMode !== 'lyrics'"
+          class="guest-event__header text-center"
+        >
           <v-icon size="36" color="primary" class="mb-2">mdi-music-note-eighth</v-icon>
           <h1 class="text-h5 font-weight-bold mb-1">{{ guestStore.eventName }}</h1>
         </div>
@@ -118,5 +124,22 @@ watch(() => [route.query.ev, route.params.shareCode], load)
 
 .guest-event__header {
   padding-top: 8px;
+}
+
+.guest-event--lyrics {
+  align-items: stretch;
+  padding: 0;
+  min-height: 100dvh;
+  background: rgb(var(--v-theme-surface));
+}
+
+.guest-event--lyrics .guest-event__container {
+  max-width: none;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
 }
 </style>

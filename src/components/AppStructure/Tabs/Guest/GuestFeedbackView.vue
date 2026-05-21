@@ -1,9 +1,12 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useGuestStore } from '@/stores/guestStore'
 import {
   hasGuestSubmittedFeedback,
   markGuestFeedbackSubmitted,
 } from '@/utils/guestSessionStorage.js'
+
+const guestStore = useGuestStore()
 
 const props = defineProps({
   sharingParams: { type: Object, required: true },
@@ -64,6 +67,22 @@ onMounted(() => {
     return
   }
   step.value = 'intro'
+})
+
+/** Pause live broadcast poll while guest is answering questions (not intro / thank-you). */
+function syncBroadcastPollPause() {
+  const pause = step.value === 'feedback' && !hasSubmitted.value
+  if (pause) {
+    guestStore.pauseBroadcastPolling()
+  } else {
+    guestStore.resumeBroadcastPolling()
+  }
+}
+
+watch([step, hasSubmitted], syncBroadcastPollPause, { immediate: true })
+
+onUnmounted(() => {
+  guestStore.resumeBroadcastPolling()
 })
 </script>
 

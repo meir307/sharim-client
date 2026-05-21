@@ -1,19 +1,40 @@
-export function guestVoteStorageKey(sharingCode) {
-  return `sharim.guestVoted.${String(sharingCode ?? '').trim()}`
+/**
+ * @param {string} sharingCode
+ * @param {string} [playlistKey] — `playlistId` or `playlistName` from voting `sharingParams`
+ */
+export function guestVoteStorageKey(sharingCode, playlistKey) {
+  const code = String(sharingCode ?? '').trim()
+  const playlist = String(playlistKey ?? '').trim()
+  if (!playlist) {
+    return `sharim.guestVoted.${code}`
+  }
+  return `sharim.guestVoted.${code}.${playlist}`
 }
 
 export function guestFeedbackStorageKey(sharingCode) {
   return `sharim.guestFeedback.${String(sharingCode ?? '').trim()}`
 }
 
-export function hasGuestVoted(sharingCode) {
+/**
+ * @param {string} sharingCode
+ * @param {string} playlistKey
+ */
+export function hasGuestVoted(sharingCode, playlistKey) {
   if (!sharingCode || typeof window === 'undefined') return false
-  return window.localStorage.getItem(guestVoteStorageKey(sharingCode)) === '1'
+  const key = String(playlistKey ?? '').trim()
+  if (!key) return false
+  return window.localStorage.getItem(guestVoteStorageKey(sharingCode, key)) === '1'
 }
 
-export function markGuestVoted(sharingCode) {
+/**
+ * @param {string} sharingCode
+ * @param {string} playlistKey
+ */
+export function markGuestVoted(sharingCode, playlistKey) {
   if (!sharingCode || typeof window === 'undefined') return
-  window.localStorage.setItem(guestVoteStorageKey(sharingCode), '1')
+  const key = String(playlistKey ?? '').trim()
+  if (!key) return
+  window.localStorage.setItem(guestVoteStorageKey(sharingCode, key), '1')
 }
 
 export function hasGuestSubmittedFeedback(sharingCode) {

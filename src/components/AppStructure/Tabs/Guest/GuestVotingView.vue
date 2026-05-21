@@ -1,6 +1,10 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useGuestStore } from '@/stores/guestStore'
 import { hasGuestVoted, markGuestVoted } from '@/utils/guestSessionStorage.js'
+import { votingPlaylistKeyFromSharingParams } from '@/utils/eventSharingModel.js'
+
+const guestStore = useGuestStore()
 
 const props = defineProps({
   sharingParams: { type: Object, required: true },
@@ -20,6 +24,8 @@ const maxSelections = computed(() =>
   Math.max(1, Math.min(99, Number(props.sharingParams?.maxSelections) || 1)),
 )
 const selectedCount = computed(() => voteSongs.value.filter((s) => s.checked).length)
+
+const votingPlaylistKey = computed(() => votingPlaylistKeyFromSharingParams(props.sharingParams))
 
 function initSongs() {
   const pl = Array.isArray(props.sharingParams?.playlist) ? props.sharingParams.playlist : []
@@ -60,17 +66,42 @@ function submitVote() {
   setTimeout(() => {
     submitting.value = false
     hasVoted.value = true
-    markGuestVoted(props.sharingCode)
+    markGuestVoted(props.sharingCode, votingPlaylistKey.value)
   }, 400)
 }
 
-onMounted(() => {
+function applyVoteSessionState() {
   initSongs()
-  if (hasGuestVoted(props.sharingCode)) {
+  declined.value = false
+  const playlistKey = votingPlaylistKey.value
+  if (playlistKey && hasGuestVoted(props.sharingCode, playlistKey)) {
     hasVoted.value = true
-    return
+  } else {
+    hasVoted.value = false
+    step.value = 'intro'
   }
-  step.value = 'intro'
+}
+
+watch(
+  () => [props.sharingCode, votingPlaylistKey.value, props.sharingParams?.playlist],
+  applyVoteSessionState,
+  { immediate: true, deep: false },
+)
+
+/** Pause live broadcast poll while guest is on the song ballot (not intro / thank-you). */
+function syncBroadcastPollPause() {
+  const pause = step.value === 'voting' && !hasVoted.value
+  if (pause) {
+    guestStore.pauseBroadcastPolling()
+  } else {
+    guestStore.resumeBroadcastPolling()
+  }
+}
+
+watch([step, hasVoted], syncBroadcastPollPause, { immediate: true })
+
+onUnmounted(() => {
+  guestStore.resumeBroadcastPolling()
 })
 </script>
 

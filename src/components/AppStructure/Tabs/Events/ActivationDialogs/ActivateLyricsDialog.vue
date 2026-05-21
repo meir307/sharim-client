@@ -71,7 +71,10 @@ function onActivate() {
     if (!pl) {
       throw new Error('יש לבחור פלייליסט')
     }
-    const sharingParams = buildLyricsSharingParams(playlistDisplayName(pl))
+    const sharingParams = buildLyricsSharingParams(playlistDisplayName(pl), {
+      playlist: pl,
+      songs: userStore.songs,
+    })
     emit('activate', {
       playlist: { ...pl },
       sharingParams,

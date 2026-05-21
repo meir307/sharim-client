@@ -1,15 +1,132 @@
 import { DEFAULT_BROADCAST_MODE } from '@/components/AppStructure/Tabs/Events/eventBroadcastModes.js'
+import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
 
 /** @typedef {'landing'|'voting'|'lyrics'|'feedback'} BroadcastMode */
 
 /**
  * Guest-facing `sharingParams` (from `FetchGuestEvent` / poll):
  * - `broadcastMode`, `eventName` (set by server on activate), `secondsToSleep` (poll interval)
+ * - `activeLink` (lyrics mode) — current song doc URL for guests
+ * - `voteSessionId` (voting mode) — broadcast round marker for guest poll/UI sync
+ * - `playlistId` (voting mode) — one guest vote per playlist per event link
+ * - `votingSessions` — history of voting rounds (playlist snapshots) for host results (later)
  * - plus mode-specific fields from the activation builders below.
  */
 
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {string}
+ */
+export function votingPlaylistKeyFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  if (!sp) return ''
+  const id = String(sp.playlistId ?? sp.PlaylistId ?? '').trim()
+  if (id) return id
+  return String(sp.playlistName ?? sp.PlaylistName ?? '').trim()
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {Array<{ playlistId: string, playlistName: string, voteSessionId?: string, activatedAt?: string, songs?: unknown[] }>}
+ */
+function normalizeVotingSessions(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null
+      const playlistId = String(entry.playlistId ?? entry.PlaylistId ?? '').trim()
+      if (!playlistId) return null
+      const playlistName = String(entry.playlistName ?? entry.PlaylistName ?? '').trim()
+      const out = { playlistId, playlistName: playlistName || playlistId }
+      const voteSessionId = String(entry.voteSessionId ?? entry.VoteSessionId ?? '').trim()
+      if (voteSessionId) out.voteSessionId = voteSessionId
+      const activatedAt = String(entry.activatedAt ?? entry.ActivatedAt ?? '').trim()
+      if (activatedAt) out.activatedAt = activatedAt
+      const songs = entry.songs ?? entry.Songs
+      if (Array.isArray(songs)) out.songs = songs
+      return out
+    })
+    .filter(Boolean)
+}
+
+/**
+ * Playlist ids that already had a voting round on this event.
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {string[]}
+ */
+export function usedVotingPlaylistIdsFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  if (!sp) return []
+  const fromSessions = normalizeVotingSessions(sp.votingSessions ?? sp.VotingSessions).map(
+    (s) => s.playlistId,
+  )
+  const legacy = Array.isArray(sp.usedVotingPlaylistIds ?? sp.UsedVotingPlaylistIds)
+    ? sp.usedVotingPlaylistIds ?? sp.UsedVotingPlaylistIds
+    : []
+  const fromLegacy = legacy.map((id) => String(id ?? '').trim()).filter(Boolean)
+  return [...new Set([...fromSessions, ...fromLegacy])]
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} previousSharingParams
+ * @param {string} playlistId
+ * @returns {boolean}
+ */
+export function isPlaylistAlreadyUsedForVoting(previousSharingParams, playlistId) {
+  const key = String(playlistId ?? '').trim()
+  if (!key) return false
+  return usedVotingPlaylistIdsFromSharingParams(previousSharingParams).includes(key)
+}
+
+/**
+ * Append current voting activation to `votingSessions` (history for results; same playlist allowed).
+ * @param {Record<string, unknown> | null | undefined} previousSharingParams
+ * @param {Record<string, unknown>} votingParams — output of `buildVotingSharingParams`
+ * @returns {Record<string, unknown>}
+ */
+export function attachVotingSessionRegistry(previousSharingParams, votingParams) {
+  const playlistId = votingPlaylistKeyFromSharingParams(votingParams)
+  if (!playlistId) {
+    throw new Error('חסר מזהה פלייליסט להצבעה')
+  }
+
+  const prev = previousSharingParams && typeof previousSharingParams === 'object' ? previousSharingParams : null
+  const sessions = normalizeVotingSessions(prev?.votingSessions ?? prev?.VotingSessions)
+
+  sessions.push({
+    playlistId,
+    playlistName: String(votingParams.playlistName ?? votingParams.PlaylistName ?? '').trim() || playlistId,
+    voteSessionId: String(votingParams.voteSessionId ?? votingParams.VoteSessionId ?? '').trim() || undefined,
+    activatedAt: new Date().toISOString(),
+    songs: Array.isArray(votingParams.playlist) ? votingParams.playlist : [],
+  })
+
+  return { ...votingParams, votingSessions: sessions }
+}
+
+/**
+ * New voting round id (generated on each host activation).
+ * @returns {string}
+ */
+function createVoteSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `vs-${Date.now()}`
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {string}
+ */
+export function voteSessionIdFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  if (!sp) return ''
+  return String(sp.voteSessionId ?? sp.VoteSessionId ?? '').trim()
+}
+
 /** Default guest poll interval when `secondsToSleep` is missing (seconds). */
-export const DEFAULT_SECONDS_TO_SLEEP = 5
+const DEFAULT_SECONDS_TO_SLEEP = 5
 
 const MIN_SECONDS_TO_SLEEP = 2
 const MAX_SECONDS_TO_SLEEP = 120
@@ -18,7 +135,7 @@ const MAX_SECONDS_TO_SLEEP = 120
  * @param {unknown} value
  * @returns {number}
  */
-export function normalizeSecondsToSleep(value) {
+function normalizeSecondsToSleep(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return DEFAULT_SECONDS_TO_SLEEP
   return Math.min(MAX_SECONDS_TO_SLEEP, Math.max(MIN_SECONDS_TO_SLEEP, Math.floor(n)))
@@ -132,7 +249,7 @@ export function buildLandingSharingParams(page, overrides = {}) {
  * @param {unknown} raw
  * @returns {Array<{ id?: string|number, songName: string, artist: string }>}
  */
-export function normalizeVotingPlaylistSongs(raw) {
+function normalizeVotingPlaylistSongs(raw) {
   if (!Array.isArray(raw)) return []
   return raw
     .map((entry) => {
@@ -167,9 +284,15 @@ export function normalizeVotingPlaylistSongs(raw) {
  *   playlist?: unknown[],
  *   songs?: unknown[],
  *   secondsToSleep?: number,
+ *   playlistId?: string,
+ *   voteSessionId?: string,
  * }} input
  */
 export function buildVotingSharingParams(input) {
+  const playlistId = String(input?.playlistId ?? input?.PlaylistId ?? '').trim()
+  if (!playlistId) {
+    throw new Error('יש לבחור פלייליסט')
+  }
   const playlistName = String(input?.playlistName ?? '').trim()
   if (!playlistName) {
     throw new Error('יש לבחור פלייליסט')
@@ -184,9 +307,14 @@ export function buildVotingSharingParams(input) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
   const body = String(input?.body ?? '').trim()
+  const voteSessionId =
+    String(input?.voteSessionId ?? input?.VoteSessionId ?? '').trim() || createVoteSessionId()
+
   return withGuestPollDefaults(
     {
       broadcastMode: 'voting',
+      voteSessionId,
+      playlistId,
       playlistName,
       maxSelections,
       title,
@@ -198,18 +326,56 @@ export function buildVotingSharingParams(input) {
 }
 
 /**
+ * First song link in a host playlist (same resolution as DisplaySong).
+ * @param {Record<string, unknown> | null | undefined} playlist
+ * @param {Array<Record<string, unknown>>} [songs]
+ * @returns {string}
+ */
+export function lyricsActiveLinkFromPlaylist(playlist, songs = []) {
+  if (!playlist || typeof playlist !== 'object') return ''
+  const raw = playlist.songs ?? playlist.Songs ?? playlist.songList ?? playlist.items ?? []
+  if (!Array.isArray(raw) || !raw.length) return ''
+
+  const songList = Array.isArray(songs) ? songs : []
+  const entry = raw[0]
+  if (entry == null) return ''
+
+  let song = entry
+  if (typeof entry === 'object' && entry !== null) {
+    const id = entry.id ?? entry.Id
+    if (id != null && String(id).trim() !== '') {
+      const idStr = String(id).trim()
+      const fromStore = songList.find((s) => String(s.id ?? s.Id ?? '').trim() === idStr)
+      if (fromStore) song = fromStore
+    }
+  }
+
+  return songListUrl(song)
+}
+
+/**
  * @param {string} playlistName
- * @param {{ secondsToSleep?: number }} [options]
+ * @param {{
+ *   secondsToSleep?: number,
+ *   activeLink?: string,
+ *   playlist?: Record<string, unknown> | null,
+ *   songs?: Array<Record<string, unknown>>,
+ * }} [options]
  */
 export function buildLyricsSharingParams(playlistName, options = {}) {
   const name = String(playlistName ?? '').trim()
   if (!name) {
     throw new Error('יש לבחור פלייליסט')
   }
+  const activeLink =
+    String(options.activeLink ?? options.ActiveLink ?? '').trim() ||
+    lyricsActiveLinkFromPlaylist(options.playlist, options.songs)
+
   return withGuestPollDefaults(
     {
       broadcastMode: 'lyrics',
       playlistName: name,
+      activeLink,
     },
     options,
   )
@@ -260,19 +426,4 @@ export function playlistDisplayName(playlist) {
     if (v != null && String(v).trim() !== '') return String(v).trim()
   }
   return ''
-}
-
-/**
- * @param {Array<Record<string, unknown>>} playlists
- * @param {string} name
- * @returns {Record<string, unknown> | null}
- */
-export function findPlaylistByName(playlists, name) {
-  const target = String(name ?? '').trim()
-  if (!target || !Array.isArray(playlists)) return null
-  return (
-    playlists.find((p) => playlistDisplayName(p) === target) ??
-    playlists.find((p) => playlistDisplayName(p).toLowerCase() === target.toLowerCase()) ??
-    null
-  )
 }

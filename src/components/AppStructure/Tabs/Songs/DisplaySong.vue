@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/UserStore'
 import { useSharingStore } from '@/stores/SharingStore'
+import { useEventStore } from '@/stores/eventStore'
 import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
 
 const open = defineModel({ type: Boolean, default: false })
@@ -20,6 +21,7 @@ const emit = defineEmits(['closed'])
 
 const userStore = useUserStore()
 const sharingStore = useSharingStore()
+const eventStore = useEventStore()
 const playlistSongIndex = ref(0)
 const DISPLAY_SONG_INDEX_KEY = 'displaySongPlaylistIndexSession'
 
@@ -491,6 +493,7 @@ function notifyUpdateActiveLink() {
   const url = String(displayLinkUrl.value ?? '').trim()
   if (!open.value || !url) return
   void sharingStore.updateActiveLink(url)
+  void eventStore.updateLyricsActiveLink(url)
 }
 
 watch(

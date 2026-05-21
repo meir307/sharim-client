@@ -55,6 +55,8 @@ export const useGuestStore = defineStore('GuestStore', {
     broadcastModeJustChanged: false,
     _sharingParamsFingerprint: '',
     _pollSecondsToSleep: null,
+    /** While > 0, `FetchGuestEvent` interval is stopped (guest voting / feedback in progress). */
+    broadcastPollPauseCount: 0,
   }),
 
   getters: {
@@ -102,12 +104,31 @@ export const useGuestStore = defineStore('GuestStore', {
       this._pollSecondsToSleep = null
     },
 
+    pauseBroadcastPolling() {
+      this.broadcastPollPauseCount += 1
+      this.stopBroadcastPolling()
+    },
+
+    resumeBroadcastPolling() {
+      if (this.broadcastPollPauseCount > 0) {
+        this.broadcastPollPauseCount -= 1
+      }
+      if (this.broadcastPollPauseCount === 0) {
+        this.startBroadcastPolling()
+      }
+    },
+
     restartBroadcastPolling() {
       this.stopBroadcastPolling()
-      this.startBroadcastPolling()
+      if (this.broadcastPollPauseCount === 0) {
+        this.startBroadcastPolling()
+      }
     },
 
     startBroadcastPolling() {
+      if (this.broadcastPollPauseCount > 0) {
+        return
+      }
       this.stopBroadcastPolling()
       if (!String(this.sharingCode ?? '').trim() || !this.sharingParams) {
         return
@@ -196,6 +217,7 @@ export const useGuestStore = defineStore('GuestStore', {
     },
 
     reset() {
+      this.broadcastPollPauseCount = 0
       this.stopBroadcastPolling()
       this.loading = false
       this.error = ''

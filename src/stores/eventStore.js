@@ -2,7 +2,10 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useUserStore } from './UserStore'
 import { useLoaderStore } from './LoaderStore'
-import { parseSharingParams } from '@/utils/eventSharingModel'
+import {
+  broadcastModeFromSharingParams,
+  parseSharingParams,
+} from '@/utils/eventSharingModel'
 
 /**
  * @param {Record<string, unknown> | null | undefined} event
@@ -270,10 +273,12 @@ export const useEventStore = defineStore('EventStore', {
     /**
      * `POST event/UpdateBrodcast` — uses `selectedEventId`; `sharingParams` includes `broadcastMode`.
      * @param {Record<string, unknown>} sharingParams
+     * @param {{ silent?: boolean }} [options]
      */
-    async updateBrodcast(sharingParams) {
+    async updateBrodcast(sharingParams, options = {}) {
       const userStore = useUserStore()
       const loaderStore = useLoaderStore()
+      const silent = Boolean(options.silent)
 
       const id = this.selectedEventId
       if (id == null || String(id).trim() === '') {
@@ -287,7 +292,7 @@ export const useEventStore = defineStore('EventStore', {
       }
 
       this.error = null
-      loaderStore.show()
+      if (!silent) loaderStore.show()
       try {
         const response = await axios.post(
           userStore.apiUrl + 'event/UpdateBrodcast',
@@ -309,12 +314,26 @@ export const useEventStore = defineStore('EventStore', {
         return parsed
       } catch (error) {
         const message = error.response?.data?.message ?? error.message
-        alert(message)
+        if (!silent) alert(message)
         this.error = message
         throw error
       } finally {
-        loaderStore.hide()
+        if (!silent) loaderStore.hide()
       }
+    },
+
+    /**
+     * Lyrics broadcast: sync `activeLink` in `sharingParams` (DB + guest poll table).
+     * @param {string} link
+     */
+    async updateLyricsActiveLink(link) {
+      const sp = parseSharingParams(this.selectedEvent?.sharingParams)
+      if (broadcastModeFromSharingParams(sp) !== 'lyrics') return null
+
+      const activeLink = String(link ?? '').trim()
+      if (!activeLink) return null
+
+      return this.updateBrodcast({ ...sp, activeLink }, { silent: true })
     },
   },
 })
