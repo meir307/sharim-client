@@ -37,6 +37,15 @@ export function markGuestVotedForSharingParams(sharingParams) {
   window.localStorage.setItem(key, '1')
 }
 
+/** @param {Record<string, unknown> | null | undefined} sharingParams */
+export function clearGuestVotedForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return
+  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, playlistName)
+  if (!key) return
+  window.localStorage.removeItem(key)
+}
+
 export function hasGuestSubmittedFeedback(sharingCode) {
   if (!sharingCode || typeof window === 'undefined') return false
   return window.localStorage.getItem(guestFeedbackStorageKey(sharingCode)) === '1'

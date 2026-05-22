@@ -43,6 +43,39 @@ const activeNavItem = computed(() =>
 
 const event = computed(() => props.event)
 
+/** @type {import('vue').Ref<number | null>} */
+const selectedVotingSessionId = ref(null)
+/** @type {import('vue').Ref<Array<{ title: string, value: number }>>} */
+const votingPlaylistItems = ref([])
+const votingTotalVotes = ref(0)
+const votingLoading = ref(false)
+/** @type {import('vue').Ref<{ refresh?: () => Promise<void> } | null>} */
+const votingPanelRef = ref(null)
+
+const votingEventId = computed(() => {
+  const id = event.value?.id ?? event.value?.Id
+  if (id == null || String(id).trim() === '') return null
+  const n = Number(id)
+  return Number.isFinite(n) && n > 0 ? n : null
+})
+
+watch(activeSection, (section) => {
+  if (section !== 'voting') {
+    selectedVotingSessionId.value = null
+    votingPlaylistItems.value = []
+    votingTotalVotes.value = 0
+    votingLoading.value = false
+  }
+})
+
+function refreshVotingResults() {
+  votingPanelRef.value?.refresh?.()
+}
+
+function onVotingPlaylistItems(items) {
+  votingPlaylistItems.value = Array.isArray(items) ? items : []
+}
+
 function openNavDrawer() {
   navDrawerOpen.value = true
 }
@@ -139,7 +172,38 @@ function onEdit() {
                 @click="openNavDrawer"
               />
               <h2 class="title-text">{{ pageTitle }}</h2>
+              <v-select
+                v-if="activeSection === 'voting'"
+                v-model="selectedVotingSessionId"
+                :items="votingPlaylistItems"
+                item-title="title"
+                item-value="value"
+                label="פלייליסט"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="event-detail__voting-playlist-select ms-3"
+                :disabled="!votingPlaylistItems.length"
+                style="max-width: 220px"
+              />
+              <span
+                v-if="activeSection === 'voting'"
+                class="title-text event-detail__total-votes ms-3"
+              >
+                סה"כ {{ votingTotalVotes }} הצבעות
+              </span>
               <v-spacer />
+              <v-btn
+                v-if="activeSection === 'voting'"
+                color="primary"
+                class="add-btn event-detail__voting-refresh"
+                prepend-icon="mdi-refresh"
+                :loading="votingLoading"
+                :disabled="votingEventId == null"
+                @click="refreshVotingResults"
+              >
+                רענן
+              </v-btn>
               <div v-if="activeSection === 'control'" class="tab-header-actions">
                 <v-btn
                   color="primary"
@@ -156,7 +220,13 @@ function onEdit() {
           <v-card-text class="pa-0">
             <component
               :is="activeNavItem.component"
-              :event="activeSection === 'control' ? event : undefined"
+              :ref="activeSection === 'voting' ? votingPanelRef : undefined"
+              :event="activeSection === 'feedback' ? undefined : event"
+              :selected-session-id="activeSection === 'voting' ? selectedVotingSessionId : undefined"
+              @update:selected-session-id="selectedVotingSessionId = $event"
+              @update:playlist-items="onVotingPlaylistItems"
+              @update:total-votes="votingTotalVotes = $event"
+              @update:loading="votingLoading = $event"
             />
           </v-card-text>
         </v-card>
@@ -198,5 +268,18 @@ function onEdit() {
 .event-detail__back :deep(.v-btn__overlay),
 .event-detail__back :deep(.v-btn__underlay) {
   border-radius: inherit;
+}
+
+.event-detail__voting-playlist-select {
+  flex-shrink: 0;
+}
+
+.event-detail__total-votes {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.event-detail__voting-refresh {
+  flex-shrink: 0;
 }
 </style>

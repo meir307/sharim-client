@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useGuestStore } from '@/stores/guestStore'
 import {
+  clearGuestVotedForSharingParams,
   hasGuestVotedForSharingParams,
   markGuestVotedForSharingParams,
 } from '@/utils/guestSessionStorage.js'
@@ -63,14 +64,40 @@ function toggleSong(song) {
   song.checked = true
 }
 
-function submitVote() {
-  if (selectedCount.value === 0 || hasVoted.value) return
+async function submitVote() {
+  if (selectedCount.value === 0 || hasVoted.value || submitting.value) return
   submitting.value = true
-  setTimeout(() => {
-    submitting.value = false
+  try {
+    const selections = voteSongs.value
+      .filter((s) => s.checked)
+      .map((s) => ({
+        id: s.id,
+        songName: s.name,
+        artist: s.artist || undefined,
+      }))
+    await guestStore.guestVote(selections)
     hasVoted.value = true
     markGuestVotedForSharingParams(props.sharingParams)
-  }, 400)
+  } catch (err) {
+    const resData = err?.response?.data ?? {}
+    const message = String(
+      resData.message ??
+        resData.errorMessage ??
+        err?.message ??
+        'שליחת ההצבעה נכשלה',
+    ).trim()
+    alert(message)
+  } finally {
+    submitting.value = false
+  }
+}
+
+/** TEST ONLY — remove before production */
+function clearVoteSessionForTesting() {
+  clearGuestVotedForSharingParams(props.sharingParams)
+  hasVoted.value = false
+  step.value = 'intro'
+  initSongs()
 }
 
 function applyVoteSessionState() {
@@ -121,7 +148,16 @@ onUnmounted(() => {
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
       <h2 class="text-h6 font-weight-bold mb-2">תודה על ההצבעה!</h2>
-      <p class="text-body-2 mb-0">ההצבעה שלך נשמרה. נתראה באירוע!</p>
+      <p class="text-body-2 mb-4">ההצבעה שלך נשמרה. נתראה באירוע!</p>
+      <!-- TEST ONLY — delete before production -->
+      <v-btn
+        variant="outlined"
+        color="warning"
+        size="small"
+        @click="clearVoteSessionForTesting"
+      >
+        [בדיקה] נקה זיכרון הצבעה
+      </v-btn>
     </v-card>
 
     <v-card

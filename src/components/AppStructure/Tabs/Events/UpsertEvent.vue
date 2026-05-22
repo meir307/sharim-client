@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { toDateInputValue } from '@/utils/dateInputValue.js'
 
 const props = defineProps({
   editEvent: { type: Object, default: null },
@@ -14,11 +15,21 @@ const form = reactive({
   name: '',
   date: '',
   description: '',
+  crowdSize: '',
 })
 
 const isUpdateMode = computed(() => form.id != null && form.id !== '')
 
 const requiredRule = (v) => (!!v && String(v).trim().length > 0) || 'שדה חובה'
+
+const crowdSizeRule = (v) => {
+  if (v == null || String(v).trim() === '') return true
+  const n = Number(v)
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+    return 'יש להזין מספר שלם חיובי'
+  }
+  return true
+}
 
 function applyEventToForm(event) {
   if (!event || typeof event !== 'object') {
@@ -26,12 +37,16 @@ function applyEventToForm(event) {
     form.name = ''
     form.date = ''
     form.description = ''
+    form.crowdSize = ''
     return
   }
   form.id = event.id ?? null
   form.name = event.name ?? ''
-  form.date = event.date ?? ''
+  form.date = toDateInputValue(event.date ?? event.Date)
   form.description = event.description ?? event.playlistName ?? ''
+  const rawCrowd = event.crowdSize ?? event.CrowdSize
+  form.crowdSize =
+    rawCrowd != null && String(rawCrowd).trim() !== '' ? String(rawCrowd) : ''
 }
 
 watch(
@@ -54,17 +69,28 @@ function closeDialog() {
 }
 
 function buildPayload() {
+  const crowdRaw = String(form.crowdSize ?? '').trim()
+  let crowdSize = null
+  if (crowdRaw !== '') {
+    const n = Number(crowdRaw)
+    if (Number.isFinite(n) && n >= 0) crowdSize = Math.floor(n)
+  }
   return {
     id: form.id,
     name: String(form.name).trim(),
     date: form.date || '',
     description: String(form.description).trim(),
+    crowdSize,
   }
 }
 
 function save() {
   if (requiredRule(form.name) !== true) {
     alert('יש להזין שם אירוע')
+    return
+  }
+  if (crowdSizeRule(form.crowdSize) !== true) {
+    alert('משתתפים בארוע לא תקין')
     return
   }
   emit('saved', buildPayload())
@@ -98,6 +124,18 @@ function save() {
             type="date"
             density="comfortable"
             hide-details="auto"
+          />
+        </v-col>
+        <v-col cols="12" sm="6">
+          <v-text-field
+            v-model="form.crowdSize"
+            label="משתתפים בארוע"
+            type="number"
+            min="0"
+            step="1"
+            density="comfortable"
+            hide-details="auto"
+            :rules="[crowdSizeRule]"
           />
         </v-col>
         <v-col cols="12">

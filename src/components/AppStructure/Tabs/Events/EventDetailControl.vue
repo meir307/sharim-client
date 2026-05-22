@@ -55,6 +55,14 @@ const guestLinkHint = computed(() =>
     : 'קוד השיתוף יופיע לאחר יצירת האירוע או כשהשרת מחזיר sharingCode',
 )
 
+const crowdSizeLabel = computed(() => {
+  const raw = resolvedEvent.value?.crowdSize ?? resolvedEvent.value?.CrowdSize
+  if (raw == null || String(raw).trim() === '') return ''
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) return ''
+  return `משתתפים כ ${Math.floor(n)} אנשים`
+})
+
 const activeBroadcastMeta = computed(() =>
   broadcastModes.find((m) => m.value === currentBroadcast.value) || broadcastModes[0],
 )
@@ -216,6 +224,11 @@ function onDisplaySongClosed() {
       <div class="event-detail-control__meta text-body-2 text-medium-emphasis mb-4">
         <v-icon size="14" class="me-1">mdi-calendar</v-icon>
         {{ formatHebrewDate(resolvedEvent?.date) }}
+        <template v-if="crowdSizeLabel">
+          <span class="mx-2">·</span>
+          <v-icon size="14" class="me-1">mdi-account-group</v-icon>
+          {{ crowdSizeLabel }}
+        </template>
         <span class="mx-2">·</span>
         {{ resolvedEvent?.description || '—' }}
       </div>

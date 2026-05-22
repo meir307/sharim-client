@@ -6,6 +6,7 @@ import {
   broadcastModeFromSharingParams,
   parseSharingParams,
 } from '@/utils/eventSharingModel'
+import { toDateInputValue } from '@/utils/dateInputValue.js'
 
 /**
  * @param {Record<string, unknown> | null | undefined} event
@@ -39,13 +40,17 @@ export function normalizeEventFromApi(raw) {
   return {
     id,
     name: String(raw.name ?? raw.Name ?? '').trim(),
-    date: raw.date ?? raw.Date ?? '',
+    date: toDateInputValue(raw.date ?? raw.Date),
     description: String(raw.description ?? raw.Description ?? '').trim(),
     phase: raw.phase ?? raw.Phase ?? 'draft',
     shareCode: extractEventSharingCode(raw),
     sharingParams,
     totalVotes: Number(raw.totalVotes ?? raw.TotalVotes ?? 0) || 0,
     totalFeedback: Number(raw.totalFeedback ?? raw.TotalFeedback ?? 0) || 0,
+    crowdSize:
+      raw.crowdSize != null || raw.CrowdSize != null
+        ? Number(raw.crowdSize ?? raw.CrowdSize) || 0
+        : null,
   }
 }
 
@@ -57,6 +62,11 @@ function buildEventRequestBody(payload) {
     name: String(payload?.name ?? '').trim(),
     date: payload?.date ?? '',
     description: String(payload?.description ?? '').trim(),
+  }
+  if (payload?.crowdSize != null && payload.crowdSize !== '') {
+    body.crowdSize = Number(payload.crowdSize)
+  } else if (Object.prototype.hasOwnProperty.call(payload ?? {}, 'crowdSize')) {
+    body.crowdSize = null
   }
   const id = payload?.id ?? payload?.Id
   if (id != null && String(id).trim() !== '') {
@@ -98,6 +108,83 @@ function eventFromResponseData(data) {
  * @param {unknown} data
  * @returns {Array<Record<string, unknown>>}
  */
+/**
+ * @param {unknown} raw
+ * @returns {{
+ *   id: number,
+ *   eventId: number,
+ *   playlistName: string,
+ *   playList: unknown[],
+ *   activeDate: unknown,
+ *   totalVotes: number,
+ *   lines: Array<{ songId: number, songName: string, artist: string, votes: number }>,
+ * } | null}
+ */
+function normalizeVotingSessionFromApi(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = Number(raw.id ?? raw.Id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const playListRaw = raw.playList ?? raw.PlayList ?? raw.playlist ?? raw.Playlist
+  let playList = []
+  if (Array.isArray(playListRaw)) {
+    playList = playListRaw
+  } else if (typeof playListRaw === 'string' && playListRaw.trim()) {
+    try {
+      const parsed = JSON.parse(playListRaw)
+      if (Array.isArray(parsed)) playList = parsed
+    } catch {
+      playList = []
+    }
+  }
+  const linesRaw = raw.lines ?? raw.Lines ?? []
+  const lines = Array.isArray(linesRaw)
+    ? linesRaw
+        .map((line) => {
+          if (!line || typeof line !== 'object') return null
+          const songId = Number(line.songId ?? line.SongId)
+          const songName = String(line.songName ?? line.SongName ?? '').trim()
+          if (!Number.isFinite(songId) || songId <= 0 || !songName) return null
+          return {
+            songId,
+            songName,
+            artist: String(line.artist ?? line.Artist ?? '').trim(),
+            votes: Number(line.votes ?? line.Votes) || 0,
+          }
+        })
+        .filter(Boolean)
+    : []
+  return {
+    id,
+    eventId: Number(raw.eventId ?? raw.EventId) || 0,
+    playlistName: String(raw.playlistName ?? raw.PlaylistName ?? '').trim(),
+    playList,
+    activeDate: raw.activeDate ?? raw.ActiveDate ?? null,
+    totalVotes: Number(raw.totalVotes ?? raw.TotalVotes) || 0,
+    lines,
+  }
+}
+
+/**
+ * @param {unknown} data
+ * @returns {Array<ReturnType<typeof normalizeVotingSessionFromApi>>}
+ */
+function votingSessionsFromResponseData(data) {
+  if (!data || typeof data !== 'object') return []
+  const failed = data.success === false || data.Success === false
+  if (failed) {
+    const message =
+      data.errorMessage ??
+      data.ErrorMessage ??
+      data.message ??
+      data.Message ??
+      'טעינת תוצאות ההצבעה נכשלה'
+    throw new Error(String(message))
+  }
+  const raw = data.sessions ?? data.Sessions ?? []
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => normalizeVotingSessionFromApi(item)).filter(Boolean)
+}
+
 function eventsListFromResponseData(data) {
   if (!data || typeof data !== 'object') return []
   const failed = data.success === false || data.Success === false
@@ -326,6 +413,45 @@ export const useEventStore = defineStore('EventStore', {
      * Lyrics broadcast: sync `activeLink` in `sharingParams` (DB + guest poll table).
      * @param {string} link
      */
+    /**
+     * `POST event/FetchVotingResults` — all voting headers + lines for an event.
+     * @param {number|string} eventId
+     * @returns {Promise<Array<{
+     *   id: number,
+     *   eventId: number,
+     *   playlistName: string,
+     *   playList: unknown[],
+     *   activeDate: unknown,
+     *   totalVotes: number,
+     *   lines: Array<{ songId: number, songName: string, artist: string, votes: number }>,
+     * }>>}
+     */
+    async fetchVotingResults(eventId) {
+      const userStore = useUserStore()
+      const id = Number(eventId)
+      if (!Number.isFinite(id) || id <= 0) {
+        throw new Error('מזהה אירוע לא תקין')
+      }
+
+      this.error = null
+      try {
+        const response = await axios.post(
+          userStore.apiUrl + 'event/FetchVotingResults',
+          { eventId: id },
+          {
+            headers: {
+              sessionId: userStore.user?.sessionId || '',
+            },
+          },
+        )
+        return votingSessionsFromResponseData(response.data)
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        this.error = message
+        throw error
+      }
+    },
+
     async updateLyricsActiveLink(link) {
       const sp = parseSharingParams(this.selectedEvent?.sharingParams)
       if (broadcastModeFromSharingParams(sp) !== 'lyrics') return null

@@ -3,9 +3,11 @@ import axios from 'axios'
 import { useUserStore } from './UserStore'
 import {
   broadcastModeFromSharingParams,
+  eventIdFromSharingParams,
   eventNameFromSharingParams,
   parseSharingParams,
   secondsToSleepFromSharingParams,
+  votingSessionFromSharingParams,
 } from '@/utils/eventSharingModel.js'
 
 /** @type {ReturnType<typeof setInterval> | null} */
@@ -179,6 +181,70 @@ export const useGuestStore = defineStore('GuestStore', {
      * Initial load by sharing code (`?ev=`).
      * @param {string} sharingCode
      */
+    /**
+     * Submit guest ballot for the live voting broadcast.
+     * @param {Array<{ id: string | number, songName: string, artist?: string }>} selections
+     */
+    async guestVote(selections) {
+      const userStore = useUserStore()
+      const code = String(this.sharingCode ?? '').trim()
+      if (!code) {
+        throw new Error('חסר קוד שיתוף')
+      }
+
+      const sp = this.sharingParams
+      if (!sp || typeof sp !== 'object') {
+        throw new Error('שידור לא פעיל')
+      }
+
+      const eventId = eventIdFromSharingParams(sp)
+      const { playlistName } = votingSessionFromSharingParams(sp)
+      const rawHeaderId = sp.votingHeaderId ?? sp.VotingHeaderId
+      const votingHeaderId =
+        rawHeaderId != null && String(rawHeaderId).trim() !== '' ? Number(rawHeaderId) : NaN
+
+      if (!eventId) {
+        throw new Error('מזהה אירוע חסר — הפעילו מחדש את ההצבעה מהמארח')
+      }
+      if (!playlistName) {
+        throw new Error('שם פלייליסט חסר')
+      }
+      if (!Number.isFinite(votingHeaderId) || votingHeaderId <= 0) {
+        throw new Error('מזהה סבב הצבעה חסר — הפעילו מחדש את ההצבעה מהמארח')
+      }
+
+      const picks = Array.isArray(selections)
+        ? selections
+            .filter((s) => s && String(s.songName ?? '').trim())
+            .map((s) => ({
+              id: s.id,
+              songName: String(s.songName).trim(),
+              artist: String(s.artist ?? '').trim() || undefined,
+            }))
+        : []
+      if (!picks.length) {
+        throw new Error('יש לבחור לפחות שיר אחד')
+      }
+
+      const response = await axios.post(userStore.apiUrl + 'event/SubmitGuestVote', {
+        sharingCode: code,
+        eventId: Number(eventId) || eventId,
+        playlistName,
+        votingHeaderId,
+        selections: picks,
+      })
+
+      const data = response.data
+      if (!data || typeof data !== 'object') {
+        throw new Error('תשובה לא תקינה מהשרת')
+      }
+      if (data.success === false || data.Success === false) {
+        const message =
+          data.errorMessage ?? data.ErrorMessage ?? data.message ?? data.Message ?? 'שליחת ההצבעה נכשלה'
+        throw new Error(String(message))
+      }
+    },
+
     async loadBySharingCode(sharingCode) {
       const userStore = useUserStore()
       const code = String(sharingCode ?? '').trim()
