@@ -1,14 +1,14 @@
+import { votingSessionFromSharingParams } from '@/utils/eventSharingModel.js'
+
 /**
- * @param {string} sharingCode
- * @param {string} [playlistKey] — `playlistId` or `playlistName` from voting `sharingParams`
+ * @param {string} eventId
+ * @param {string} playlistName
  */
-export function guestVoteStorageKey(sharingCode, playlistKey) {
-  const code = String(sharingCode ?? '').trim()
-  const playlist = String(playlistKey ?? '').trim()
-  if (!playlist) {
-    return `sharim.guestVoted.${code}`
-  }
-  return `sharim.guestVoted.${code}.${playlist}`
+export function guestVoteStorageKey(eventId, playlistName) {
+  const eid = String(eventId ?? '').trim()
+  const name = String(playlistName ?? '').trim()
+  if (!eid || !name) return ''
+  return `sharim.guestVoted.${eid}.${encodeURIComponent(name)}`
 }
 
 export function guestFeedbackStorageKey(sharingCode) {
@@ -16,25 +16,25 @@ export function guestFeedbackStorageKey(sharingCode) {
 }
 
 /**
- * @param {string} sharingCode
- * @param {string} playlistKey
+ * @param {Record<string, unknown> | null | undefined} sharingParams
  */
-export function hasGuestVoted(sharingCode, playlistKey) {
-  if (!sharingCode || typeof window === 'undefined') return false
-  const key = String(playlistKey ?? '').trim()
+export function hasGuestVotedForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return false
+  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, playlistName)
   if (!key) return false
-  return window.localStorage.getItem(guestVoteStorageKey(sharingCode, key)) === '1'
+  return window.localStorage.getItem(key) === '1'
 }
 
 /**
- * @param {string} sharingCode
- * @param {string} playlistKey
+ * @param {Record<string, unknown> | null | undefined} sharingParams
  */
-export function markGuestVoted(sharingCode, playlistKey) {
-  if (!sharingCode || typeof window === 'undefined') return
-  const key = String(playlistKey ?? '').trim()
+export function markGuestVotedForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return
+  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, playlistName)
   if (!key) return
-  window.localStorage.setItem(guestVoteStorageKey(sharingCode, key), '1')
+  window.localStorage.setItem(key, '1')
 }
 
 export function hasGuestSubmittedFeedback(sharingCode) {

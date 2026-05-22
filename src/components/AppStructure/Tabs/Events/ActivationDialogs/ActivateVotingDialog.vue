@@ -156,12 +156,7 @@ function onActivate() {
   try {
     const pl = selectedPlaylist.value
     if (!pl) return
-    const idx = playlists.value.findIndex(
-      (p, i) => playlistStableKey(p, i) === String(selectedPlaylistKey.value),
-    )
-    const playlistId = playlistStableKey(pl, idx >= 0 ? idx : 0)
     const sharingParams = buildVotingSharingParams({
-      playlistId,
       playlistName: playlistDisplayName(pl),
       maxSelections: maxSelections.value,
       title: voteTitle.value,

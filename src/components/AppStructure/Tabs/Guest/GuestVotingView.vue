@@ -1,8 +1,11 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useGuestStore } from '@/stores/guestStore'
-import { hasGuestVoted, markGuestVoted } from '@/utils/guestSessionStorage.js'
-import { votingPlaylistKeyFromSharingParams } from '@/utils/eventSharingModel.js'
+import {
+  hasGuestVotedForSharingParams,
+  markGuestVotedForSharingParams,
+} from '@/utils/guestSessionStorage.js'
+import { votingSessionFromSharingParams } from '@/utils/eventSharingModel.js'
 
 const guestStore = useGuestStore()
 
@@ -25,7 +28,7 @@ const maxSelections = computed(() =>
 )
 const selectedCount = computed(() => voteSongs.value.filter((s) => s.checked).length)
 
-const votingPlaylistKey = computed(() => votingPlaylistKeyFromSharingParams(props.sharingParams))
+const votingSession = computed(() => votingSessionFromSharingParams(props.sharingParams))
 
 function initSongs() {
   const pl = Array.isArray(props.sharingParams?.playlist) ? props.sharingParams.playlist : []
@@ -66,15 +69,14 @@ function submitVote() {
   setTimeout(() => {
     submitting.value = false
     hasVoted.value = true
-    markGuestVoted(props.sharingCode, votingPlaylistKey.value)
+    markGuestVotedForSharingParams(props.sharingParams)
   }, 400)
 }
 
 function applyVoteSessionState() {
   initSongs()
   declined.value = false
-  const playlistKey = votingPlaylistKey.value
-  if (playlistKey && hasGuestVoted(props.sharingCode, playlistKey)) {
+  if (hasGuestVotedForSharingParams(props.sharingParams)) {
     hasVoted.value = true
   } else {
     hasVoted.value = false
@@ -83,7 +85,11 @@ function applyVoteSessionState() {
 }
 
 watch(
-  () => [props.sharingCode, votingPlaylistKey.value, props.sharingParams?.playlist],
+  () => [
+    votingSession.value.eventId,
+    votingSession.value.playlistName,
+    props.sharingParams?.playlist,
+  ],
   applyVoteSessionState,
   { immediate: true, deep: false },
 )

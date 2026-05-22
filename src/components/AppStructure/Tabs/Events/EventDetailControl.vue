@@ -4,7 +4,6 @@ import { broadcastModeDescription, DEFAULT_BROADCAST_MODE, EVENT_BROADCAST_MODES
 import { formatHebrewDate } from '@/utils/formatHebrewDate'
 import { buildGuestEventQueryUrl, buildGuestShareMessage } from '@/utils/shareGuestUrl'
 import {
-  attachVotingSessionRegistry,
   broadcastModeFromSharingParams,
   currentBroadcastFromEvent,
   parseSharingParams,
@@ -156,20 +155,14 @@ async function ensureSongsLoaded() {
 async function onSharingActivate(sharingParams) {
   activating.value = true
   try {
-    let params = sharingParams
     const mode = String(sharingParams?.broadcastMode ?? sharingParams?.BroadcastMode ?? '').trim()
-    if (mode === 'voting') {
-      const prev = parseSharingParams(resolvedEvent.value?.sharingParams)
-      try {
-        params = attachVotingSessionRegistry(prev, sharingParams)
-      } catch (err) {
-        alert(err?.message ?? String(err))
-        return
-      }
+    const eventId = eventIdForStorage(resolvedEvent.value)
+    let params = sharingParams
+    if (mode === 'voting' && eventId != null && String(eventId).trim() !== '') {
+      params = { ...sharingParams, eventId }
     }
     const saved = await eventStore.updateBrodcast(params)
     currentBroadcast.value = broadcastModeFromSharingParams(saved)
-    const eventId = eventIdForStorage(resolvedEvent.value)
     const savedMode = String(saved?.broadcastMode ?? '').trim()
     if (savedMode === 'voting') {
       const name = String(saved?.playlistName ?? params?.playlistName ?? '').trim()
