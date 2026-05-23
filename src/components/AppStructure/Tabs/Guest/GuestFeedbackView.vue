@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useGuestStore } from '@/stores/guestStore'
 import {
-  hasGuestSubmittedFeedback,
-  markGuestFeedbackSubmitted,
+  clearGuestSubmittedFeedbackForSharingParams,
+  hasGuestSubmittedFeedbackForSharingParams,
+  markGuestSubmittedFeedbackForSharingParams,
 } from '@/utils/guestSessionStorage.js'
+import { feedbackSessionFromSharingParams } from '@/utils/eventSharingModel.js'
 
 const guestStore = useGuestStore()
 
@@ -22,6 +24,8 @@ const questions = ref([])
 
 const title = computed(() => String(props.sharingParams?.title ?? '').trim())
 const body = computed(() => String(props.sharingParams?.body ?? '').trim())
+
+const feedbackSession = computed(() => feedbackSessionFromSharingParams(props.sharingParams))
 
 function initQuestions() {
   const qs = Array.isArray(props.sharingParams?.questions) ? props.sharingParams.questions : []
@@ -50,24 +54,55 @@ function setStarRating(question, rating) {
   question.answer = rating
 }
 
-function submitFeedback() {
-  if (hasSubmitted.value) return
+async function submitFeedback() {
+  if (hasSubmitted.value || submitting.value) return
   submitting.value = true
-  setTimeout(() => {
-    submitting.value = false
+  try {
+    await guestStore.guestFeedback(questions.value)
     hasSubmitted.value = true
-    markGuestFeedbackSubmitted(props.sharingCode)
-  }, 400)
+    markGuestSubmittedFeedbackForSharingParams(props.sharingParams)
+  } catch (err) {
+    const resData = err?.response?.data ?? {}
+    const message = String(
+      resData.message ??
+        resData.errorMessage ??
+        err?.message ??
+        'שליחת המשוב נכשלה',
+    ).trim()
+    alert(message)
+  } finally {
+    submitting.value = false
+  }
 }
 
-onMounted(() => {
-  initQuestions()
-  if (hasGuestSubmittedFeedback(props.sharingCode)) {
-    hasSubmitted.value = true
-    return
-  }
+/** TEST ONLY — remove before production */
+function clearFeedbackSessionForTesting() {
+  clearGuestSubmittedFeedbackForSharingParams(props.sharingParams)
+  hasSubmitted.value = false
   step.value = 'intro'
-})
+  initQuestions()
+}
+
+function applyFeedbackSessionState() {
+  initQuestions()
+  declined.value = false
+  if (hasGuestSubmittedFeedbackForSharingParams(props.sharingParams)) {
+    hasSubmitted.value = true
+  } else {
+    hasSubmitted.value = false
+    step.value = 'intro'
+  }
+}
+
+watch(
+  () => [
+    feedbackSession.value.eventId,
+    feedbackSession.value.title,
+    props.sharingParams?.questions,
+  ],
+  applyFeedbackSessionState,
+  { immediate: true, deep: false },
+)
 
 /** Pause live broadcast poll while guest is answering questions (not intro / thank-you). */
 function syncBroadcastPollPause() {
@@ -96,7 +131,16 @@ onUnmounted(() => {
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
       <h2 class="text-h6 font-weight-bold mb-2">תודה על המשוב!</h2>
-      <p class="text-body-2 mb-0">התגובה שלך נשמרה. תודה שהשתתפת!</p>
+      <p class="text-body-2 mb-4">התגובה שלך נשמרה. תודה שהשתתפת!</p>
+      <!-- TEST ONLY — delete before production -->
+      <v-btn
+        variant="outlined"
+        color="warning"
+        size="small"
+        @click="clearFeedbackSessionForTesting"
+      >
+        [בדיקה] נקה זיכרון משוב
+      </v-btn>
     </v-card>
 
     <v-card

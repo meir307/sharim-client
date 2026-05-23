@@ -1,5 +1,6 @@
 const VOTING_PLAYLIST_KEY = 'sharim.eventVotingPlaylistByEventId'
 const LANDING_PAGE_KEY = 'sharim.eventLandingPageNameByEventId'
+const FEEDBACK_SESSION_TITLE_KEY = 'sharim.eventFeedbackSessionTitleByEventId'
 
 function readMap(storageKey) {
   if (typeof window === 'undefined') return {}
@@ -68,4 +69,20 @@ export function loadLandingPageName(eventId) {
  */
 export function saveLandingPageName(eventId, landingPageName) {
   saveLabel(LANDING_PAGE_KEY, eventId, landingPageName)
+}
+
+/**
+ * @param {string|number | null | undefined} eventId
+ * @returns {string}
+ */
+export function loadFeedbackSessionTitle(eventId) {
+  return loadLabel(FEEDBACK_SESSION_TITLE_KEY, eventId)
+}
+
+/**
+ * @param {string|number | null | undefined} eventId
+ * @param {string} sessionTitle
+ */
+export function saveFeedbackSessionTitle(eventId, sessionTitle) {
+  saveLabel(FEEDBACK_SESSION_TITLE_KEY, eventId, sessionTitle)
 }

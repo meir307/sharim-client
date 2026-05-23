@@ -61,8 +61,18 @@ export function formatVotingBroadcastDescription(playlistName) {
 }
 
 /**
+ * @param {string} [sessionTitle]
+ */
+export function formatFeedbackBroadcastDescription(sessionTitle) {
+  const base = modeMeta('feedback')?.description ?? 'טופס משוב לפי שאלות שהוגדרו בהגדרות'
+  const title = String(sessionTitle ?? '').trim()
+  if (!title) return base
+  return `הקהל ממלא משוב «${title}»`
+}
+
+/**
  * @param {string} modeValue
- * @param {{ playlistName?: string, landingPageName?: string }} [options]
+ * @param {{ playlistName?: string, landingPageName?: string, feedbackSessionTitle?: string }} [options]
  */
 export function broadcastModeDescription(modeValue, options = {}) {
   if (modeValue === 'landing') {
@@ -70,6 +80,9 @@ export function broadcastModeDescription(modeValue, options = {}) {
   }
   if (modeValue === 'voting') {
     return formatVotingBroadcastDescription(options.playlistName)
+  }
+  if (modeValue === 'feedback') {
+    return formatFeedbackBroadcastDescription(options.feedbackSessionTitle)
   }
   const meta = modeMeta(modeValue)
   return meta?.description ?? ''

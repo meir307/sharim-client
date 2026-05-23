@@ -52,7 +52,16 @@ const votingLoading = ref(false)
 /** @type {import('vue').Ref<{ refresh?: () => Promise<void> } | null>} */
 const votingPanelRef = ref(null)
 
-const votingEventId = computed(() => {
+/** @type {import('vue').Ref<number | null>} */
+const selectedFeedbackSessionId = ref(null)
+/** @type {import('vue').Ref<Array<{ sessionTitle: string, value: number }>>} */
+const feedbackSessionItems = ref([])
+const feedbackTotalParticipate = ref(0)
+const feedbackLoading = ref(false)
+/** @type {import('vue').Ref<{ refresh?: () => Promise<void> } | null>} */
+const feedbackPanelRef = ref(null)
+
+const eventDetailId = computed(() => {
   const id = event.value?.id ?? event.value?.Id
   if (id == null || String(id).trim() === '') return null
   const n = Number(id)
@@ -66,14 +75,52 @@ watch(activeSection, (section) => {
     votingTotalVotes.value = 0
     votingLoading.value = false
   }
+  if (section !== 'feedback') {
+    selectedFeedbackSessionId.value = null
+    feedbackSessionItems.value = []
+    feedbackTotalParticipate.value = 0
+    feedbackLoading.value = false
+  }
 })
 
 function refreshVotingResults() {
   votingPanelRef.value?.refresh?.()
 }
 
+function refreshFeedbackResults() {
+  feedbackPanelRef.value?.refresh?.()
+}
+
 function onVotingPlaylistItems(items) {
   votingPlaylistItems.value = Array.isArray(items) ? items : []
+}
+
+function onFeedbackSessionItems(items) {
+  if (!Array.isArray(items)) {
+    feedbackSessionItems.value = []
+    return
+  }
+  feedbackSessionItems.value = items
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      if ('sessionTitle' in item && item.value != null) {
+        const value = Number(item.value)
+        if (!Number.isFinite(value) || value <= 0) return null
+        const sessionTitle = String(item.sessionTitle ?? '').trim()
+        return {
+          sessionTitle: sessionTitle || `סבב #${value}`,
+          value,
+        }
+      }
+      const value = Number(item.id ?? item.Id ?? item.value ?? item.Value)
+      const sessionTitle = String(item.title ?? item.Title ?? item.sessionTitle ?? '').trim()
+      if (!Number.isFinite(value) || value <= 0) return null
+      return {
+        sessionTitle: sessionTitle || `סבב #${value}`,
+        value,
+      }
+    })
+    .filter(Boolean)
 }
 
 function openNavDrawer() {
@@ -182,25 +229,56 @@ function onEdit() {
                 density="compact"
                 hide-details
                 variant="outlined"
-                class="event-detail__voting-playlist-select ms-3"
+                class="event-detail__session-select ms-3"
                 :disabled="!votingPlaylistItems.length"
+                style="max-width: 220px"
+              />
+              <v-select
+                v-if="activeSection === 'feedback'"
+                v-model="selectedFeedbackSessionId"
+                :items="feedbackSessionItems"
+                item-title="sessionTitle"
+                item-value="value"
+                label="כותרת משוב"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="event-detail__session-select ms-3"
+                :disabled="!feedbackSessionItems.length"
                 style="max-width: 220px"
               />
               <span
                 v-if="activeSection === 'voting'"
-                class="title-text event-detail__total-votes ms-3"
+                class="title-text event-detail__session-total ms-3"
               >
                 סה"כ {{ votingTotalVotes }} הצבעות
+              </span>
+              <span
+                v-if="activeSection === 'feedback'"
+                class="title-text event-detail__session-total ms-3"
+              >
+                סה"כ {{ feedbackTotalParticipate }} משתתפים
               </span>
               <v-spacer />
               <v-btn
                 v-if="activeSection === 'voting'"
                 color="primary"
-                class="add-btn event-detail__voting-refresh"
+                class="add-btn event-detail__section-refresh"
                 prepend-icon="mdi-refresh"
                 :loading="votingLoading"
-                :disabled="votingEventId == null"
+                :disabled="eventDetailId == null"
                 @click="refreshVotingResults"
+              >
+                רענן
+              </v-btn>
+              <v-btn
+                v-if="activeSection === 'feedback'"
+                color="primary"
+                class="add-btn event-detail__section-refresh"
+                prepend-icon="mdi-refresh"
+                :loading="feedbackLoading"
+                :disabled="eventDetailId == null"
+                @click="refreshFeedbackResults"
               >
                 רענן
               </v-btn>
@@ -220,13 +298,39 @@ function onEdit() {
           <v-card-text class="pa-0">
             <component
               :is="activeNavItem.component"
-              :ref="activeSection === 'voting' ? votingPanelRef : undefined"
-              :event="activeSection === 'feedback' ? undefined : event"
-              :selected-session-id="activeSection === 'voting' ? selectedVotingSessionId : undefined"
-              @update:selected-session-id="selectedVotingSessionId = $event"
+              :ref="
+                activeSection === 'voting'
+                  ? votingPanelRef
+                  : activeSection === 'feedback'
+                    ? feedbackPanelRef
+                    : undefined
+              "
+              :event="event"
+              :selected-session-id="
+                activeSection === 'voting'
+                  ? selectedVotingSessionId
+                  : activeSection === 'feedback'
+                    ? selectedFeedbackSessionId
+                    : undefined
+              "
+              @update:selected-session-id="
+                activeSection === 'voting'
+                  ? (selectedVotingSessionId = $event)
+                  : activeSection === 'feedback'
+                    ? (selectedFeedbackSessionId = $event)
+                    : undefined
+              "
               @update:playlist-items="onVotingPlaylistItems"
+              @update:feedback-session-items="onFeedbackSessionItems"
               @update:total-votes="votingTotalVotes = $event"
-              @update:loading="votingLoading = $event"
+              @update:total-participate="feedbackTotalParticipate = $event"
+              @update:loading="
+                activeSection === 'voting'
+                  ? (votingLoading = $event)
+                  : activeSection === 'feedback'
+                    ? (feedbackLoading = $event)
+                    : undefined
+              "
             />
           </v-card-text>
         </v-card>
@@ -270,16 +374,16 @@ function onEdit() {
   border-radius: inherit;
 }
 
-.event-detail__voting-playlist-select {
+.event-detail__session-select {
   flex-shrink: 0;
 }
 
-.event-detail__total-votes {
+.event-detail__session-total {
   flex-shrink: 0;
   white-space: nowrap;
 }
 
-.event-detail__voting-refresh {
+.event-detail__section-refresh {
   flex-shrink: 0;
 }
 </style>

@@ -1,4 +1,7 @@
-import { votingSessionFromSharingParams } from '@/utils/eventSharingModel.js'
+import {
+  feedbackSessionFromSharingParams,
+  votingSessionFromSharingParams,
+} from '@/utils/eventSharingModel.js'
 
 /**
  * @param {string} eventId
@@ -11,8 +14,15 @@ export function guestVoteStorageKey(eventId, playlistName) {
   return `sharim.guestVoted.${eid}.${encodeURIComponent(name)}`
 }
 
-export function guestFeedbackStorageKey(sharingCode) {
-  return `sharim.guestFeedback.${String(sharingCode ?? '').trim()}`
+/**
+ * @param {string} eventId
+ * @param {string} title
+ */
+export function guestFeedbackStorageKey(eventId, title) {
+  const eid = String(eventId ?? '').trim()
+  const sessionTitle = String(title ?? '').trim()
+  if (!eid || !sessionTitle) return ''
+  return `sharim.guestFeedback.${eid}.${encodeURIComponent(sessionTitle)}`
 }
 
 /**
@@ -46,12 +56,33 @@ export function clearGuestVotedForSharingParams(sharingParams) {
   window.localStorage.removeItem(key)
 }
 
-export function hasGuestSubmittedFeedback(sharingCode) {
-  if (!sharingCode || typeof window === 'undefined') return false
-  return window.localStorage.getItem(guestFeedbackStorageKey(sharingCode)) === '1'
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ */
+export function hasGuestSubmittedFeedbackForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return false
+  const { eventId, title } = feedbackSessionFromSharingParams(sharingParams)
+  const key = guestFeedbackStorageKey(eventId, title)
+  if (!key) return false
+  return window.localStorage.getItem(key) === '1'
 }
 
-export function markGuestFeedbackSubmitted(sharingCode) {
-  if (!sharingCode || typeof window === 'undefined') return
-  window.localStorage.setItem(guestFeedbackStorageKey(sharingCode), '1')
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ */
+export function markGuestSubmittedFeedbackForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return
+  const { eventId, title } = feedbackSessionFromSharingParams(sharingParams)
+  const key = guestFeedbackStorageKey(eventId, title)
+  if (!key) return
+  window.localStorage.setItem(key, '1')
+}
+
+/** @param {Record<string, unknown> | null | undefined} sharingParams */
+export function clearGuestSubmittedFeedbackForSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return
+  const { eventId, title } = feedbackSessionFromSharingParams(sharingParams)
+  const key = guestFeedbackStorageKey(eventId, title)
+  if (!key) return
+  window.localStorage.removeItem(key)
 }

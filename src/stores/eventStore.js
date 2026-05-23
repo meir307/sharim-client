@@ -185,6 +185,95 @@ function votingSessionsFromResponseData(data) {
   return raw.map((item) => normalizeVotingSessionFromApi(item)).filter(Boolean)
 }
 
+/**
+ * @param {unknown} raw
+ * @returns {{
+ *   id: number,
+ *   question: string,
+ *   type: 'stars' | 'text',
+ *   totalResponses: number,
+ *   avgRating: number,
+ *   distribution: number[],
+ *   responses: string[],
+ * } | null}
+ */
+function normalizeFeedbackQuestionFromApi(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = Number(raw.id ?? raw.Id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const type = raw.type === 'text' || raw.Type === 'text' ? 'text' : 'stars'
+  const distRaw = raw.distribution ?? raw.Distribution ?? []
+  const distribution = [0, 0, 0, 0, 0]
+  if (Array.isArray(distRaw)) {
+    for (let i = 0; i < 5; i++) {
+      distribution[i] = Number(distRaw[i]) || 0
+    }
+  }
+  const responsesRaw = raw.responses ?? raw.Responses ?? []
+  const responses = Array.isArray(responsesRaw)
+    ? responsesRaw.map((r) => String(r ?? '').trim()).filter(Boolean)
+    : []
+  return {
+    id,
+    question: String(raw.question ?? raw.Question ?? raw.text ?? raw.Text ?? '').trim(),
+    type,
+    totalResponses: Number(raw.totalResponses ?? raw.TotalResponses) || 0,
+    avgRating: Number(raw.avgRating ?? raw.AvgRating) || 0,
+    distribution,
+    responses,
+  }
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{
+ *   id: number,
+ *   eventId: number,
+ *   title: string,
+ *   activeDate: unknown,
+ *   totalParticipate: number,
+ *   questions: Array<ReturnType<typeof normalizeFeedbackQuestionFromApi>>,
+ * } | null}
+ */
+function normalizeFeedbackSessionFromApi(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const id = Number(raw.id ?? raw.Id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const questionsRaw = raw.questions ?? raw.Questions ?? []
+  const questions = Array.isArray(questionsRaw)
+    ? questionsRaw.map((q) => normalizeFeedbackQuestionFromApi(q)).filter(Boolean)
+    : []
+  return {
+    id,
+    eventId: Number(raw.eventId ?? raw.EventId) || 0,
+    title: String(raw.title ?? raw.Title ?? '').trim(),
+    activeDate: raw.activeDate ?? raw.ActiveDate ?? null,
+    totalParticipate: Number(raw.totalParticipate ?? raw.TotalParticipate) || 0,
+    questions,
+  }
+}
+
+/**
+ * @param {unknown} data
+ * @returns {Array<ReturnType<typeof normalizeFeedbackSessionFromApi>>}
+ */
+function feedbackSessionsFromResponseData(data) {
+  if (!data || typeof data !== 'object') return []
+  const failed = data.success === false || data.Success === false
+  if (failed) {
+    const message =
+      data.errorMessage ??
+      data.ErrorMessage ??
+      data.message ??
+      data.Message ??
+      'טעינת תוצאות המשוב נכשלה'
+    throw new Error(String(message))
+  }
+  const raw = data.sessions ?? data.Sessions ?? []
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => normalizeFeedbackSessionFromApi(item)).filter(Boolean)
+}
+
 function eventsListFromResponseData(data) {
   if (!data || typeof data !== 'object') return []
   const failed = data.success === false || data.Success === false
@@ -445,6 +534,36 @@ export const useEventStore = defineStore('EventStore', {
           },
         )
         return votingSessionsFromResponseData(response.data)
+      } catch (error) {
+        const message = error.response?.data?.message ?? error.message
+        this.error = message
+        throw error
+      }
+    },
+
+    /**
+     * `POST event/FetchFeedbackResults` — all feedback headers + aggregated answers for an event.
+     * @param {number|string} eventId
+     */
+    async fetchFeedbackResults(eventId) {
+      const userStore = useUserStore()
+      const id = Number(eventId)
+      if (!Number.isFinite(id) || id <= 0) {
+        throw new Error('מזהה אירוע לא תקין')
+      }
+
+      this.error = null
+      try {
+        const response = await axios.post(
+          userStore.apiUrl + 'event/FetchFeedbackResults',
+          { eventId: id },
+          {
+            headers: {
+              sessionId: userStore.user?.sessionId || '',
+            },
+          },
+        )
+        return feedbackSessionsFromResponseData(response.data)
       } catch (error) {
         const message = error.response?.data?.message ?? error.message
         this.error = message

@@ -7,7 +7,9 @@ import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable
  * Guest-facing `sharingParams` (from `FetchGuestEvent` / poll):
  * - `broadcastMode`, `eventName` (set by server on activate), `secondsToSleep` (poll interval)
  * - `activeLink` (lyrics mode) — current song doc URL for guests
- * - `eventId` (voting mode) — set by server on activate; with `playlistName` identifies voting session for guest dedup
+ * - `eventId` (voting / feedback) — set by host on activate
+ * - `playlistName` (voting) — session key + guest label; one vote per event + playlist (localStorage)
+ * - `title` (feedback) — session key + guest intro headline; one submit per event + title (localStorage)
  * - plus mode-specific fields from the activation builders below.
  */
 
@@ -33,6 +35,19 @@ export function votingSessionFromSharingParams(sharingParams) {
   return {
     eventId: eventIdFromSharingParams(sp),
     playlistName: sp ? String(sp.playlistName ?? sp.PlaylistName ?? '').trim() : '',
+  }
+}
+
+/**
+ * Feedback session identity for guest localStorage (one submit per event + title).
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {{ eventId: string, title: string }}
+ */
+export function feedbackSessionFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  return {
+    eventId: eventIdFromSharingParams(sp),
+    title: sp ? String(sp.title ?? sp.Title ?? '').trim() : '',
   }
 }
 

@@ -7,6 +7,7 @@ import {
   eventNameFromSharingParams,
   parseSharingParams,
   secondsToSleepFromSharingParams,
+  feedbackSessionFromSharingParams,
   votingSessionFromSharingParams,
 } from '@/utils/eventSharingModel.js'
 
@@ -241,6 +242,94 @@ export const useGuestStore = defineStore('GuestStore', {
       if (data.success === false || data.Success === false) {
         const message =
           data.errorMessage ?? data.ErrorMessage ?? data.message ?? data.Message ?? 'שליחת ההצבעה נכשלה'
+        throw new Error(String(message))
+      }
+    },
+
+    /**
+     * Submit guest feedback for the live feedback broadcast.
+     * @param {Array<{ id: string | number, type: 'stars' | 'text', answer: number | string }>} questions
+     */
+    async guestFeedback(questions) {
+      const userStore = useUserStore()
+      const code = String(this.sharingCode ?? '').trim()
+      if (!code) {
+        throw new Error('חסר קוד שיתוף')
+      }
+
+      const sp = this.sharingParams
+      if (!sp || typeof sp !== 'object') {
+        throw new Error('שידור לא פעיל')
+      }
+
+      const eventId = eventIdFromSharingParams(sp)
+      const { title } = feedbackSessionFromSharingParams(sp)
+      const rawHeaderId = sp.feedbackHeaderId ?? sp.FeedbackHeaderId
+      const feedbackHeaderId =
+        rawHeaderId != null && String(rawHeaderId).trim() !== '' ? Number(rawHeaderId) : NaN
+
+      if (!eventId) {
+        throw new Error('מזהה אירוע חסר — הפעילו מחדש את המשוב מהמארח')
+      }
+      if (!title) {
+        throw new Error('כותרת משוב חסרה')
+      }
+      if (!Number.isFinite(feedbackHeaderId) || feedbackHeaderId <= 0) {
+        throw new Error('מזהה סבב משוב חסר — הפעילו מחדש את המשוב מהמארח')
+      }
+
+      const MAX_ANSWER_TEXT_LEN = 45
+      const answers = []
+      const list = Array.isArray(questions) ? questions : []
+
+      for (const q of list) {
+        const questionId = Number(q?.id)
+        if (!Number.isFinite(questionId)) {
+          throw new Error('שאלת משוב לא תקינה')
+        }
+
+        const type = q?.type === 'text' ? 'text' : 'stars'
+        if (type === 'stars') {
+          const stars = Math.floor(Number(q?.answer))
+          if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+            throw new Error('יש לדרג את כל שאלות הכוכבים (1–5)')
+          }
+          answers.push({ questionId, stars })
+        } else {
+          let answerText = String(q?.answer ?? '').trim()
+          if (!answerText) {
+            throw new Error('יש למלא את כל שאלות הטקסט')
+          }
+          if (answerText.length > MAX_ANSWER_TEXT_LEN) {
+            answerText = answerText.slice(0, MAX_ANSWER_TEXT_LEN)
+          }
+          answers.push({ questionId, answerText })
+        }
+      }
+
+      if (!answers.length) {
+        throw new Error('אין שאלות משוב לשליחה')
+      }
+
+      const response = await axios.post(userStore.apiUrl + 'event/SubmitGuestFeedback', {
+        sharingCode: code,
+        eventId: Number(eventId) || eventId,
+        title,
+        feedbackHeaderId,
+        answers,
+      })
+
+      const data = response.data
+      if (!data || typeof data !== 'object') {
+        throw new Error('תשובה לא תקינה מהשרת')
+      }
+      if (data.success === false || data.Success === false) {
+        const message =
+          data.errorMessage ??
+          data.ErrorMessage ??
+          data.message ??
+          data.Message ??
+          'שליחת המשוב נכשלה'
         throw new Error(String(message))
       }
     },

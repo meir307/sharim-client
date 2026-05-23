@@ -9,8 +9,10 @@ import {
   parseSharingParams,
 } from '@/utils/eventSharingModel.js'
 import {
+  loadFeedbackSessionTitle,
   loadLandingPageName,
   loadVotingPlaylistName,
+  saveFeedbackSessionTitle,
   saveLandingPageName,
   saveVotingPlaylistName,
 } from '@/utils/eventBroadcastDisplayStorage.js'
@@ -69,6 +71,7 @@ const activeBroadcastMeta = computed(() =>
 
 const votingPlaylistName = ref('')
 const landingPageName = ref('')
+const feedbackSessionTitle = ref('')
 
 function eventIdForStorage(event) {
   return event?.id ?? event?.Id ?? eventStore.selectedEventId ?? null
@@ -96,12 +99,23 @@ function syncBroadcastLabelsFromEvent(event) {
   } else {
     landingPageName.value = eventId != null ? loadLandingPageName(eventId) : ''
   }
+
+  const feedbackTitleFromParams = String(sp?.title ?? sp?.Title ?? '').trim()
+  if (feedbackTitleFromParams && eventId != null) {
+    saveFeedbackSessionTitle(eventId, feedbackTitleFromParams)
+    feedbackSessionTitle.value = feedbackTitleFromParams
+  } else {
+    feedbackSessionTitle.value =
+      eventId != null ? loadFeedbackSessionTitle(eventId) : ''
+  }
 }
 
 const activeBroadcastDescription = computed(() =>
   broadcastModeDescription(currentBroadcast.value, {
     playlistName: currentBroadcast.value === 'voting' ? votingPlaylistName.value : '',
     landingPageName: currentBroadcast.value === 'landing' ? landingPageName.value : '',
+    feedbackSessionTitle:
+      currentBroadcast.value === 'feedback' ? feedbackSessionTitle.value : '',
   }),
 )
 
@@ -166,7 +180,11 @@ async function onSharingActivate(sharingParams) {
     const mode = String(sharingParams?.broadcastMode ?? sharingParams?.BroadcastMode ?? '').trim()
     const eventId = eventIdForStorage(resolvedEvent.value)
     let params = sharingParams
-    if (mode === 'voting' && eventId != null && String(eventId).trim() !== '') {
+    if (
+      (mode === 'voting' || mode === 'feedback') &&
+      eventId != null &&
+      String(eventId).trim() !== ''
+    ) {
       params = { ...sharingParams, eventId }
     }
     const saved = await eventStore.updateBrodcast(params)
@@ -186,6 +204,13 @@ async function onSharingActivate(sharingParams) {
       if (name && eventId != null) {
         saveLandingPageName(eventId, name)
         landingPageName.value = name
+      }
+    }
+    if (savedMode === 'feedback') {
+      const sessionTitle = String(saved?.title ?? params?.title ?? '').trim()
+      if (sessionTitle && eventId != null) {
+        saveFeedbackSessionTitle(eventId, sessionTitle)
+        feedbackSessionTitle.value = sessionTitle
       }
     }
     copySnackbarText.value = 'מצב השידור עודכן'
