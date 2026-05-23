@@ -35,6 +35,17 @@
   padding-bottom: 6px;
 }
 
+/* Event detail view: +100px vs default content-wrapper height */
+.tab-page--detail > .content-wrapper {
+  height: calc(100vh - 200px + 100px);
+  max-height: calc(100vh - 200px + 100px);
+}
+
+.event-detail > .content-wrapper.content-wrapper--in-detail {
+  min-height: calc(100vh - 280px + 100px);
+  max-height: calc(100vh - 280px + 100px);
+}
+
 .content-wrapper {
   display: flex;
   position: relative;
