@@ -65,6 +65,11 @@ const crowdSizeLabel = computed(() => {
   return `משתתפים כ ${Math.floor(n)} אנשים`
 })
 
+const eventTitleForSharing = computed(() => {
+  const e = resolvedEvent.value
+  return String(e?.name ?? e?.Name ?? '').trim() || 'אירוע'
+})
+
 const activeBroadcastMeta = computed(() =>
   broadcastModes.find((m) => m.value === currentBroadcast.value) || broadcastModes[0],
 )
@@ -326,7 +331,11 @@ function onDisplaySongClosed() {
   </div>
 
   <ActivateLandingDialog v-model="showLandingDialog" @activate="onSharingActivate" />
-  <ActivateVotingDialog v-model="showVotingDialog" @activate="onSharingActivate" />
+  <ActivateVotingDialog
+    v-model="showVotingDialog"
+    :event-name="eventTitleForSharing"
+    @activate="onSharingActivate"
+  />
   <ActivateLyricsDialog v-model="showLyricsDialog" @activate="onLyricsActivate" />
   <ActivateFeedbackDialog v-model="showFeedbackDialog" @activate="onSharingActivate" />
 

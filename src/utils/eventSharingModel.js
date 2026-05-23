@@ -10,8 +10,113 @@ import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable
  * - `eventId` (voting / feedback) — set by host on activate
  * - `playlistName` (voting) — session key + guest label; one vote per event + playlist (localStorage)
  * - `title` (feedback) — session key + guest intro headline; one submit per event + title (localStorage)
+ * - Voting guest copy (`welcomeTitle`, `title`, buttons, etc.) — set by host on activate via `buildVotingSharingParams`
  * - plus mode-specific fields from the activation builders below.
  */
+
+/** Default guest voting copy (activation dialog seeds from this; live guests read `sharingParams`). */
+export const DEFAULT_VOTING_COPY = Object.freeze({
+  welcomeTitle: 'ברוכים הבאים ל "{eventName}"',
+  welcomeBody:
+  'בדף זה יוצגו המילים לשירים שיושמעו באירוע. ויהיו הפתעות נוספות...',
+  title: 'בואו נבחר יחד את השירים',
+  body: 'כדי להפוך את הערב למיוחד, אנחנו מזמינים אתכם להשתתף בבחירת הרפרטואר. ההצבעה קצרה ופשוטה — ביחד ניצור מוזיקה שמתאימה בדיוק לכם.',
+  introQuestion: 'האם תרצו להשפיע בחירת על השירים באירוע?',
+  ballotHint: 'סמנו עד {max} שירים',
+  thankYouTitle: 'תודה על ההצבעה!',
+  thankYouBody: 'ההצבעה שלך נשמרה ותשפיע על בחירת השירים באירוע. בדף זה יופיעו מילות השירים כשהאירוע יתחיל. נתראה באירוע!',
+  declinedTitle: 'תודה',
+  declinedBody: 'בדף זה יופיעו מילות השירים כשהאירוע יתחיל. נתראה באירוע!.',
+  welcomeContinueButton: 'המשך',
+  introContinueButton: 'המשך להצבעה',
+  introDeclineButton: 'לא מעוניין/ים',
+  submitVoteButton: 'שלח הצבעה ({count} שירים)',
+  declinedBackButton: 'רוצים להצביע? חזרה',
+  emptyPlaylistMessage: 'אין שירים להצבעה.',
+  submitVoteFailedMessage: 'שליחת ההצבעה נכשלה',
+  songFallbackName: 'שיר {index}',
+})
+
+/** Keys persisted in `sharingParams` for guest voting UI copy. */
+export const VOTING_GUEST_COPY_KEYS = Object.freeze([
+  'welcomeTitle',
+  'welcomeBody',
+  'title',
+  'body',
+  'introQuestion',
+  'ballotHint',
+  'thankYouTitle',
+  'thankYouBody',
+  'declinedTitle',
+  'declinedBody',
+  'welcomeContinueButton',
+  'introContinueButton',
+  'introDeclineButton',
+  'submitVoteButton',
+  'declinedBackButton',
+  'emptyPlaylistMessage',
+  'submitVoteFailedMessage',
+  'songFallbackName',
+])
+
+/**
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @param {string} key
+ * @returns {string}
+ */
+export function votingCopyFromSharingParams(sharingParams, key) {
+  if (sharingParams && typeof sharingParams === 'object') {
+    const v = sharingParams[key] ?? sharingParams[key.charAt(0).toUpperCase() + key.slice(1)]
+    const s = String(v ?? '').trim()
+    if (s) return s
+  }
+  return String(DEFAULT_VOTING_COPY[key] ?? '').trim()
+}
+
+/**
+ * @param {string} text
+ * @param {Record<string, string | number>} replacements
+ * @returns {string}
+ */
+export function applyVotingTextPlaceholders(text, replacements) {
+  let out = String(text ?? '')
+  for (const [key, value] of Object.entries(replacements)) {
+    out = out.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value))
+  }
+  return out
+}
+
+/**
+ * Default copy for the activation dialog form (`{eventName}` resolved when provided).
+ * @param {string} [eventName]
+ * @returns {Record<string, string>}
+ */
+export function activateVotingFormDefaults(eventName = '') {
+  const name = String(eventName ?? '').trim() || 'אירוע'
+  const out = /** @type {Record<string, string>} */ ({})
+  for (const key of VOTING_GUEST_COPY_KEYS) {
+    let value = String(DEFAULT_VOTING_COPY[key] ?? '')
+    if (key === 'welcomeTitle') {
+      value = applyVotingTextPlaceholders(value, { eventName: name })
+    }
+    out[key] = value
+  }
+  return out
+}
+
+/**
+ * @param {Record<string, unknown>} input
+ * @returns {Record<string, string>}
+ */
+function votingGuestCopyFromInput(input) {
+  const guestCopy = /** @type {Record<string, string>} */ ({})
+  for (const key of VOTING_GUEST_COPY_KEYS) {
+    const fromInput = String(input?.[key] ?? '').trim()
+    const value = fromInput || String(DEFAULT_VOTING_COPY[key] ?? '').trim()
+    if (value) guestCopy[key] = value
+  }
+  return guestCopy
+}
 
 /**
  * @param {Record<string, unknown> | null | undefined} sharingParams
@@ -202,15 +307,7 @@ function normalizeVotingPlaylistSongs(raw) {
 }
 
 /**
- * @param {{
- *   playlistName: string,
- *   maxSelections: number,
- *   title: string,
- *   body?: string,
- *   playlist?: unknown[],
- *   songs?: unknown[],
- *   secondsToSleep?: number,
- * }} input
+ * @param {Record<string, unknown>} input — `playlistName`, `maxSelections`, `playlist`, and all `VOTING_GUEST_COPY_KEYS`
  */
 export function buildVotingSharingParams(input) {
   const playlistName = String(input?.playlistName ?? '').trim()
@@ -218,24 +315,27 @@ export function buildVotingSharingParams(input) {
     throw new Error('יש לבחור פלייליסט')
   }
   const maxSelections = Math.max(1, Math.min(99, Number(input?.maxSelections) || 1))
-  const title = String(input?.title ?? '').trim()
+  const guestCopy = votingGuestCopyFromInput(input)
+  const title = guestCopy.title || String(input?.title ?? '').trim()
   if (!title) {
     throw new Error('יש להזין כותרת להצבעה')
   }
+  guestCopy.title = title
+  const body = guestCopy.body || String(input?.body ?? '').trim()
+  if (body) guestCopy.body = body
+
   const playlist = normalizeVotingPlaylistSongs(input?.playlist ?? input?.songs)
   if (!playlist.length) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
-  const body = String(input?.body ?? '').trim()
 
   return withGuestPollDefaults(
     {
       broadcastMode: 'voting',
       playlistName,
       maxSelections,
-      title,
-      body,
       playlist,
+      ...guestCopy,
     },
     input,
   )

@@ -6,7 +6,11 @@ import {
   hasGuestVotedForSharingParams,
   markGuestVotedForSharingParams,
 } from '@/utils/guestSessionStorage.js'
-import { votingSessionFromSharingParams } from '@/utils/eventSharingModel.js'
+import {
+  applyVotingTextPlaceholders,
+  votingCopyFromSharingParams,
+  votingSessionFromSharingParams,
+} from '@/utils/eventSharingModel.js'
 
 const guestStore = useGuestStore()
 
@@ -15,15 +19,51 @@ const props = defineProps({
   sharingCode: { type: String, default: '' },
 })
 
-/** @type {import('vue').Ref<'intro' | 'voting'>} */
-const step = ref('intro')
+/** @type {import('vue').Ref<'welcome' | 'intro' | 'voting'>} */
+const step = ref('welcome')
 const hasVoted = ref(false)
 const declined = ref(false)
 const submitting = ref(false)
 const voteSongs = ref([])
 
-const title = computed(() => String(props.sharingParams?.title ?? '').trim())
-const body = computed(() => String(props.sharingParams?.body ?? '').trim())
+function copy(key) {
+  return votingCopyFromSharingParams(props.sharingParams, key)
+}
+
+const eventName = computed(() => guestStore.eventName)
+
+const welcomeTitle = computed(() =>
+  applyVotingTextPlaceholders(copy('welcomeTitle'), {
+    eventName: eventName.value,
+  }),
+)
+const welcomeBody = computed(() => copy('welcomeBody'))
+const title = computed(() => copy('title'))
+const body = computed(() => copy('body'))
+const introQuestion = computed(() => copy('introQuestion'))
+
+const ballotHintText = computed(() =>
+  applyVotingTextPlaceholders(copy('ballotHint'), {
+    max: maxSelections.value,
+  }),
+)
+
+const thankYouTitle = computed(() => copy('thankYouTitle'))
+const thankYouBody = computed(() => copy('thankYouBody'))
+const declinedTitle = computed(() => copy('declinedTitle'))
+const declinedBody = computed(() => copy('declinedBody'))
+
+const welcomeContinueButton = computed(() => copy('welcomeContinueButton'))
+const introContinueButton = computed(() => copy('introContinueButton'))
+const introDeclineButton = computed(() => copy('introDeclineButton'))
+const declinedBackButton = computed(() => copy('declinedBackButton'))
+const emptyPlaylistMessage = computed(() => copy('emptyPlaylistMessage'))
+
+const submitVoteButtonLabel = computed(() =>
+  applyVotingTextPlaceholders(copy('submitVoteButton'), {
+    count: selectedCount.value,
+  }),
+)
 const maxSelections = computed(() =>
   Math.max(1, Math.min(99, Number(props.sharingParams?.maxSelections) || 1)),
 )
@@ -35,10 +75,18 @@ function initSongs() {
   const pl = Array.isArray(props.sharingParams?.playlist) ? props.sharingParams.playlist : []
   voteSongs.value = pl.map((entry, i) => ({
     id: entry?.id ?? i,
-    name: String(entry?.songName ?? entry?.name ?? '').trim() || `שיר ${i + 1}`,
+    name:
+      String(entry?.songName ?? entry?.name ?? '').trim() ||
+      applyVotingTextPlaceholders(copy('songFallbackName'), {
+        index: i + 1,
+      }),
     artist: String(entry?.artist ?? entry?.artistName ?? '').trim(),
     checked: false,
   }))
+}
+
+function continueFromWelcome() {
+  step.value = 'intro'
 }
 
 function continueToVoting() {
@@ -84,7 +132,7 @@ async function submitVote() {
       resData.message ??
         resData.errorMessage ??
         err?.message ??
-        'שליחת ההצבעה נכשלה',
+        copy('submitVoteFailedMessage'),
     ).trim()
     alert(message)
   } finally {
@@ -96,7 +144,7 @@ async function submitVote() {
 function clearVoteSessionForTesting() {
   clearGuestVotedForSharingParams(props.sharingParams)
   hasVoted.value = false
-  step.value = 'intro'
+  step.value = 'welcome'
   initSongs()
 }
 
@@ -107,7 +155,7 @@ function applyVoteSessionState() {
     hasVoted.value = true
   } else {
     hasVoted.value = false
-    step.value = 'intro'
+    step.value = 'welcome'
   }
 }
 
@@ -147,8 +195,8 @@ onUnmounted(() => {
       class="guest-mode-view__result-card text-center pa-8"
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
-      <h2 class="text-h6 font-weight-bold mb-2">תודה על ההצבעה!</h2>
-      <p class="text-body-2 mb-4">ההצבעה שלך נשמרה. נתראה באירוע!</p>
+      <h2 class="text-h6 font-weight-bold mb-2">{{ thankYouTitle }}</h2>
+      <p class="text-body-2 mb-4">{{ thankYouBody }}</p>
       <!-- TEST ONLY — delete before production -->
       <v-btn
         variant="outlined"
@@ -167,12 +215,31 @@ onUnmounted(() => {
       class="guest-mode-view__result-card text-center pa-8"
     >
       <v-icon size="48" color="grey" class="mb-3">mdi-hand-wave-outline</v-icon>
-      <h2 class="text-h6 font-weight-medium mb-2">תודה</h2>
-      <p class="text-body-2 text-medium-emphasis mb-4">נשמח לראותכם באירוע בכל זאת.</p>
+      <h2 class="text-h6 font-weight-medium mb-2">{{ declinedTitle }}</h2>
+      <p class="text-body-2 text-medium-emphasis mb-4">{{ declinedBody }}</p>
       <v-btn variant="text" color="primary" @click="backToIntro">
-        רוצים להצביע? חזרה
+        {{ declinedBackButton }}
       </v-btn>
     </v-card>
+
+    <div v-else-if="step === 'welcome'" class="guest-mode-view__intro text-center">
+      <v-icon size="48" color="primary" class="mb-4">mdi-hand-wave</v-icon>
+      <h2 class="text-h6 font-weight-bold mb-3">{{ welcomeTitle }}</h2>
+      <p class="text-body-2 text-medium-emphasis mb-6 guest-mode-view__body">
+        {{ welcomeBody }}
+      </p>
+      <div class="guest-mode-view__intro-actions d-flex flex-column ga-3">
+        <v-btn
+          color="primary"
+          size="large"
+          block
+          prepend-icon="mdi-arrow-left"
+          @click="continueFromWelcome"
+        >
+          {{ welcomeContinueButton }}
+        </v-btn>
+      </div>
+    </div>
 
     <div v-else-if="step === 'intro'" class="guest-mode-view__intro text-center">
       <h2 v-if="title" class="text-h6 font-weight-medium mb-3">{{ title }}</h2>
@@ -183,7 +250,7 @@ onUnmounted(() => {
         {{ body }}
       </p>
       <p class="text-body-2 text-medium-emphasis mb-6">
-        האם תרצו להצביע על השירים?
+        {{ introQuestion }}
       </p>
 
       <div class="guest-mode-view__intro-actions d-flex flex-column ga-3">
@@ -194,7 +261,7 @@ onUnmounted(() => {
           prepend-icon="mdi-vote-outline"
           @click="continueToVoting"
         >
-          המשך להצבעה
+          {{ introContinueButton }}
         </v-btn>
         <v-btn
           variant="outlined"
@@ -202,7 +269,7 @@ onUnmounted(() => {
           block
           @click="onNotInterested"
         >
-          לא מעוניין/ים
+          {{ introDeclineButton }}
         </v-btn>
       </div>
     </div>
@@ -210,7 +277,7 @@ onUnmounted(() => {
     <template v-else-if="step === 'voting'">
       <template v-if="voteSongs.length">
         <p class="text-body-2 text-medium-emphasis text-center mb-4">
-          סמנו עד {{ maxSelections }} שירים
+          {{ ballotHintText }}
         </p>
 
         <v-card variant="outlined" class="guest-mode-view__list-card">
@@ -250,13 +317,13 @@ onUnmounted(() => {
             prepend-icon="mdi-send"
             @click="submitVote"
           >
-            שלח הצבעה ({{ selectedCount }} שירים)
+            {{ submitVoteButtonLabel }}
           </v-btn>
         </div>
       </template>
 
       <p v-else class="text-body-2 text-medium-emphasis text-center mt-6">
-        אין שירים להצבעה.
+        {{ emptyPlaylistMessage }}
       </p>
     </template>
   </div>
