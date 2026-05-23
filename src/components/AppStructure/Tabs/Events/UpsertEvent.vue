@@ -90,7 +90,7 @@ function save() {
     return
   }
   if (crowdSizeRule(form.crowdSize) !== true) {
-    alert('משתתפים בארוע לא תקין')
+    alert('משתתפים באירוע לא תקין')
     return
   }
   emit('saved', buildPayload())
@@ -129,7 +129,7 @@ function save() {
         <v-col cols="12" sm="6">
           <v-text-field
             v-model="form.crowdSize"
-            label="משתתפים בארוע"
+            label="משתתפים באירוע"
             type="number"
             min="0"
             step="1"
