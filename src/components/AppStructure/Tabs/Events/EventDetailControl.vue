@@ -49,7 +49,9 @@ const sharingCode = computed(() => extractEventSharingCode(resolvedEvent.value))
 
 const guestLink = computed(() => buildGuestEventQueryUrl(sharingCode.value))
 
-const guestShareMessage = computed(() => buildGuestShareMessage(guestLink.value))
+const guestShareMessage = computed(() =>
+  buildGuestShareMessage(guestLink.value, eventTitleForSharing.value),
+)
 
 const guestLinkHint = computed(() =>
   sharingCode.value
@@ -269,7 +271,6 @@ function onDisplaySongClosed() {
       </div>
       <v-textarea
         :model-value="guestShareMessage"
-        readonly
         density="compact"
         hide-details="auto"
         variant="outlined"

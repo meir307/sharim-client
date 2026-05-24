@@ -6,6 +6,7 @@ import {
   hasGuestVotedForSharingParams,
   markGuestVotedForSharingParams,
 } from '@/utils/guestSessionStorage.js'
+import { SHOW_GUEST_SESSION_TEST_CONTROLS } from '@/utils/guestDevFlags.js'
 import {
   applyVotingTextPlaceholders,
   votingCopyFromSharingParams,
@@ -146,7 +147,6 @@ async function submitVote() {
   }
 }
 
-/** TEST ONLY — remove before production */
 function clearVoteSessionForTesting() {
   clearGuestVotedForSharingParams(props.sharingParams)
   hasVoted.value = false
@@ -212,9 +212,9 @@ onUnmounted(() => {
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
       <h2 class="text-h6 font-weight-bold mb-2">{{ thankYouTitle }}</h2>
-      <p class="text-body-2 mb-4">{{ thankYouBody }}</p>
-      <!-- TEST ONLY — delete before production -->
+      <p class="text-body-2" :class="{ 'mb-4': SHOW_GUEST_SESSION_TEST_CONTROLS }">{{ thankYouBody }}</p>
       <v-btn
+        v-if="SHOW_GUEST_SESSION_TEST_CONTROLS"
         variant="outlined"
         color="warning"
         size="small"

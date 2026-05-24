@@ -6,6 +6,7 @@ import {
   hasGuestSubmittedFeedbackForSharingParams,
   markGuestSubmittedFeedbackForSharingParams,
 } from '@/utils/guestSessionStorage.js'
+import { SHOW_GUEST_SESSION_TEST_CONTROLS } from '@/utils/guestDevFlags.js'
 import { feedbackSessionFromSharingParams } from '@/utils/eventSharingModel.js'
 
 const guestStore = useGuestStore()
@@ -75,7 +76,6 @@ async function submitFeedback() {
   }
 }
 
-/** TEST ONLY — remove before production */
 function clearFeedbackSessionForTesting() {
   clearGuestSubmittedFeedbackForSharingParams(props.sharingParams)
   hasSubmitted.value = false
@@ -131,9 +131,11 @@ onUnmounted(() => {
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
       <h2 class="text-h6 font-weight-bold mb-2">תודה על המשוב!</h2>
-      <p class="text-body-2 mb-4">התגובה שלך נשמרה. תודה שהשתתפת!</p>
-      <!-- TEST ONLY — delete before production -->
+      <p class="text-body-2" :class="{ 'mb-4': SHOW_GUEST_SESSION_TEST_CONTROLS }">
+        התגובה שלך נשמרה. תודה שהשתתפת!
+      </p>
       <v-btn
+        v-if="SHOW_GUEST_SESSION_TEST_CONTROLS"
         variant="outlined"
         color="warning"
         size="small"

@@ -47,20 +47,23 @@ export function buildGuestEventQueryUrl(sharingCode) {
 
 const GUEST_SHARE_MESSAGE_TEMPLATE = `שלום!
 
-במהלך האירוע נשתמש בקישור ייעודי (ללא התקנת אפליקציה).
-לפי שלב האירוע יוצגו אצלכם, בין היתר: מילות לשירים, הצבעה על שירים, או משוב קצר.
+ברוכים הבאים ל {eventName}
+הקישור המצורף מאפשר שיתוף ומעורבות של הקהל בהכנות ובמהלך האירוע עצמו.
 
-שמרו את הקישור — נפתח אותו יחד במהלך האירוע:
+שמרו את הקישור — וכנסו אליו במהלך האירוע:
 {link}
 
+לפרטים נוספים - כנסו עכשיו
 נשמח לראותכם!`
 
 /**
- * Share text for guests: short explanation + link.
+ * Share text for guests: welcome + explanation + link.
  * @param {string} guestUrl
+ * @param {string} [eventName]
  */
-export function buildGuestShareMessage(guestUrl) {
+export function buildGuestShareMessage(guestUrl, eventName = '') {
   const link = String(guestUrl ?? '').trim()
   if (!link) return ''
-  return GUEST_SHARE_MESSAGE_TEMPLATE.replace('{link}', link)
+  const name = String(eventName ?? '').trim() || 'אירוע'
+  return GUEST_SHARE_MESSAGE_TEMPLATE.replaceAll('{eventName}', name).replace('{link}', link)
 }
