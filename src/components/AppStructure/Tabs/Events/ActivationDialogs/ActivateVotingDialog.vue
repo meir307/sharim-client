@@ -25,7 +25,7 @@ const userStore = useUserStore()
 const eventStore = useEventStore()
 
 const selectedPlaylistKey = ref(null)
-const maxSelections = ref(3)
+const maxSelections = ref(7)
 const guestStepTab = ref('welcome')
 
 const welcomeTitle = ref('')
@@ -225,8 +225,6 @@ const previewSongs = computed(() => {
       }
     })
 })
-
-const previewSongsSample = computed(() => previewSongs.value.slice(0, 4))
 
 async function ensureSongsLoaded() {
   if (rawSongsList().length > 0) return
@@ -470,7 +468,7 @@ function onActivate() {
                   </p>
                   <v-list density="compact" class="py-0 activate-voting-dialog__song-list">
                     <v-list-item
-                      v-for="song in previewSongsSample"
+                      v-for="song in previewSongs"
                       :key="song.id"
                       class="activate-voting-dialog__list-item"
                     >
@@ -488,12 +486,6 @@ function onActivate() {
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
-                  <p
-                    v-if="previewSongs.length > previewSongsSample.length"
-                    class="text-caption text-medium-emphasis text-center mb-2"
-                  >
-                    +{{ previewSongs.length - previewSongsSample.length }} שירים נוספים
-                  </p>
                   <div class="text-center mt-2">
                     <v-btn color="info" size="small" disabled>{{ submitVotePreviewLabel }}</v-btn>
                   </div>
@@ -609,7 +601,7 @@ function onActivate() {
 }
 
 .activate-voting-dialog__song-list {
-  max-height: 10rem;
+  max-height: 14rem;
   overflow-y: auto;
   border-radius: 8px;
   border: 1px solid rgba(var(--v-border-color), 0.12);

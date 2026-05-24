@@ -19,12 +19,18 @@ const props = defineProps({
   sharingCode: { type: String, default: '' },
 })
 
+const emit = defineEmits(['ballot-step-active'])
+
 /** @type {import('vue').Ref<'welcome' | 'intro' | 'voting'>} */
 const step = ref('welcome')
 const hasVoted = ref(false)
 const declined = ref(false)
 const submitting = ref(false)
 const voteSongs = ref([])
+
+const isBallotStep = computed(
+  () => step.value === 'voting' && !hasVoted.value && !declined.value,
+)
 
 function copy(key) {
   return votingCopyFromSharingParams(props.sharingParams, key)
@@ -181,13 +187,23 @@ function syncBroadcastPollPause() {
 
 watch([step, hasVoted], syncBroadcastPollPause, { immediate: true })
 
+watch(
+  isBallotStep,
+  (active) => emit('ballot-step-active', active),
+  { immediate: true },
+)
+
 onUnmounted(() => {
   guestStore.resumeBroadcastPolling()
+  emit('ballot-step-active', false)
 })
 </script>
 
 <template>
-  <div class="guest-mode-view guest-mode-view--voting mt-4">
+  <div
+    class="guest-mode-view guest-mode-view--voting mt-4"
+    :class="{ 'guest-mode-view--ballot-fill': isBallotStep }"
+  >
     <v-card
       v-if="hasVoted"
       variant="tonal"
@@ -274,13 +290,13 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <template v-else-if="step === 'voting'">
+    <div v-else-if="step === 'voting'" class="guest-mode-view__ballot">
       <template v-if="voteSongs.length">
-        <p class="text-body-2 text-medium-emphasis text-center mb-4">
+        <p class="guest-mode-view__ballot-hint text-body-2 text-medium-emphasis text-center mb-3">
           {{ ballotHintText }}
         </p>
 
-        <v-card variant="outlined" class="guest-mode-view__list-card">
+        <v-card variant="outlined" class="guest-mode-view__list-card guest-mode-view__list-card--fill">
           <v-list density="comfortable" class="py-0 guest-mode-view__song-list">
             <v-list-item
               v-for="song in voteSongs"
@@ -308,7 +324,7 @@ onUnmounted(() => {
           </v-list>
         </v-card>
 
-        <div class="text-center mt-4">
+        <div class="guest-mode-view__submit text-center pt-3">
           <v-btn
             color="primary"
             size="large"
@@ -325,11 +341,47 @@ onUnmounted(() => {
       <p v-else class="text-body-2 text-medium-emphasis text-center mt-6">
         {{ emptyPlaylistMessage }}
       </p>
-    </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.guest-mode-view--ballot-fill {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  margin-top: 0;
+}
+
+.guest-mode-view__ballot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.guest-mode-view__ballot-hint,
+.guest-mode-view__submit {
+  flex-shrink: 0;
+}
+
+.guest-mode-view__list-card--fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.guest-mode-view--ballot-fill .guest-mode-view__song-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
 .guest-mode-view__result-card {
   border-radius: 12px;
 }

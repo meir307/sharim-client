@@ -22,6 +22,7 @@ const activeComponent = computed(() => modeComponents[guestStore.broadcastMode] 
 
 const modeSnackbar = ref(false)
 const modeSnackbarText = ref('')
+const votingBallotFill = ref(false)
 
 function sharingCodeFromRoute() {
   const ev = route.query.ev
@@ -59,7 +60,10 @@ watch(() => [route.query.ev, route.params.shareCode], load)
 <template>
   <div
     class="guest-event"
-    :class="{ 'guest-event--lyrics': guestStore.broadcastMode === 'lyrics' && guestStore.sharingParams }"
+    :class="{
+      'guest-event--lyrics': guestStore.broadcastMode === 'lyrics' && guestStore.sharingParams,
+      'guest-event--voting-ballot': votingBallotFill,
+    }"
   >
     <div class="guest-event__container">
       <v-progress-linear
@@ -87,12 +91,18 @@ watch(() => [route.query.ev, route.params.shareCode], load)
           <h1 class="text-h5 font-weight-bold mb-1">{{ guestStore.eventName }}</h1>
         </div>
 
-        <component
-          :is="activeComponent"
+        <div
           v-if="activeComponent"
-          :sharing-params="guestStore.sharingParams"
-          :sharing-code="guestStore.sharingCode"
-        />
+          class="guest-event__mode"
+          :class="{ 'guest-event__mode--ballot-fill': votingBallotFill }"
+        >
+          <component
+            :is="activeComponent"
+            :sharing-params="guestStore.sharingParams"
+            :sharing-code="guestStore.sharingCode"
+            @ballot-step-active="votingBallotFill = $event"
+          />
+        </div>
 
         <p v-else class="text-body-2 text-medium-emphasis text-center mt-8">
           מצב שידור לא מוכר.
@@ -142,4 +152,24 @@ watch(() => [route.query.ev, route.params.shareCode], load)
   margin: 0;
   padding: 0;
 }
+
+.guest-event--voting-ballot {
+  padding-bottom: 16px;
+}
+
+.guest-event--voting-ballot .guest-event__container {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.guest-event__mode--ballot-fill {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
 </style>

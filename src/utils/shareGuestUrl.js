@@ -45,8 +45,12 @@ export function buildGuestEventQueryUrl(sharingCode) {
   return absoluteGuestPath(`/guest?ev=${encodeURIComponent(code)}`)
 }
 
-const GUEST_SHARE_MESSAGE_TEMPLATE = `שלום,
-במהלך האירוע אפשר לעקוב אחרי מילות השירים בקישור הייעודי:
+const GUEST_SHARE_MESSAGE_TEMPLATE = `שלום!
+
+במהלך האירוע נשתמש בקישור ייעודי (ללא התקנת אפליקציה).
+לפי שלב האירוע יוצגו אצלכם, בין היתר: מילות לשירים, הצבעה על שירים, או משוב קצר.
+
+שמרו את הקישור — נפתח אותו יחד במהלך האירוע:
 {link}
 
 נשמח לראותכם!`

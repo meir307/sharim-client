@@ -194,16 +194,22 @@ onUnmounted(() => {
           <div class="text-subtitle-2 font-weight-medium mb-3">
             {{ index + 1 }}. {{ q.text }}
           </div>
-          <div v-if="q.type === 'stars'" class="guest-mode-view__stars-input">
-            <v-btn
-              v-for="star in 5"
-              :key="star"
-              :icon="star <= q.answer ? 'mdi-star' : 'mdi-star-outline'"
-              :color="star <= q.answer ? 'amber' : 'grey-lighten-1'"
-              variant="text"
-              size="large"
-              @click="setStarRating(q, star)"
-            />
+          <div v-if="q.type === 'stars'" class="guest-mode-view__stars-wrap">
+            <div class="guest-mode-view__stars-input">
+              <v-btn
+                v-for="star in 5"
+                :key="star"
+                :icon="star <= q.answer ? 'mdi-star' : 'mdi-star-outline'"
+                :color="star <= q.answer ? 'amber' : 'grey-lighten-1'"
+                variant="text"
+                size="large"
+                @click="setStarRating(q, star)"
+              />
+            </div>
+            <div class="guest-mode-view__stars-labels text-caption text-medium-emphasis">
+              <span>1</span>
+              <span>5</span>
+            </div>
           </div>
           <v-textarea
             v-else
@@ -257,10 +263,25 @@ onUnmounted(() => {
   white-space: pre-wrap;
 }
 
+.guest-mode-view__stars-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .guest-mode-view__stars-input {
   display: flex;
   justify-content: center;
-  gap: 4px;
-  direction: ltr;
+  gap: 2px;
+  direction: rtl;
+}
+
+.guest-mode-view__stars-labels {
+  display: flex;
+  justify-content: space-between;
+  width: min(17.5rem, 100%);
+  direction: rtl;
+  padding-inline: 0.15rem;
+  margin-top: -0.35rem;
 }
 </style>
