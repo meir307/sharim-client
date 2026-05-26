@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { VDateInput } from 'vuetify/labs/VDateInput'
 import { toDateInputValue } from '@/utils/dateInputValue.js'
 
 const props = defineProps({
@@ -19,6 +20,19 @@ const form = reactive({
 })
 
 const isUpdateMode = computed(() => form.id != null && form.id !== '')
+
+const eventDateModel = computed({
+  get() {
+    const iso = toDateInputValue(form.date)
+    if (!iso) return null
+    const [y, m, d] = iso.split('-').map(Number)
+    if (!y || !m || !d) return null
+    return new Date(y, m - 1, d)
+  },
+  set(value) {
+    form.date = value ? toDateInputValue(value) : ''
+  },
+})
 
 const requiredRule = (v) => (!!v && String(v).trim().length > 0) || 'שדה חובה'
 
@@ -118,12 +132,14 @@ function save() {
           />
         </v-col>
         <v-col cols="12" sm="6">
-          <v-text-field
-            v-model="form.date"
+          <VDateInput
+            v-model="eventDateModel"
             label="תאריך"
-            type="date"
+            input-format="dd/mm/yyyy"
+            placeholder="dd/mm/yyyy"
             density="comfortable"
             hide-details="auto"
+            clearable
           />
         </v-col>
         <v-col cols="12" sm="6">
