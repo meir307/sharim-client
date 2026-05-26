@@ -484,6 +484,12 @@ export const useEventStore = defineStore('EventStore', {
         const resEvent = response.data?.event ?? response.data?.Event
         const fromServer = parseSharingParams(resEvent?.sharingParams ?? resEvent?.SharingParams)
         const parsed = fromServer ?? parseSharingParams(sharingParams)
+        const sentSessionId = String(
+          sharingParams.guestVoteSessionId ?? sharingParams.GuestVoteSessionId ?? '',
+        ).trim()
+        if (parsed && sentSessionId && !String(parsed.guestVoteSessionId ?? '').trim()) {
+          parsed.guestVoteSessionId = sentSessionId
+        }
         if (this.selectedEvent && String(this.selectedEvent.id) === String(id)) {
           this.selectedEvent = { ...this.selectedEvent, sharingParams: parsed }
         }

@@ -10,6 +10,7 @@ import {
   buildVotingSharingParams,
   parseSharingParams,
   playlistDisplayName,
+  guestVoteSessionIdFromSharingParams,
   votingCopyFromSharingParams,
 } from '@/utils/eventSharingModel.js'
 
@@ -27,6 +28,8 @@ const eventStore = useEventStore()
 const selectedPlaylistKey = ref(null)
 const maxSelections = ref(7)
 const guestStepTab = ref('welcome')
+const resetGuestVoteSession = ref(false)
+const guestVoteSessionId = ref('')
 
 const welcomeTitle = ref('')
 const welcomeBody = ref('')
@@ -106,14 +109,17 @@ function loadTextFieldsFromSharingParams(sharingParams) {
       selectedPlaylistKey.value = playlistStableKey(playlists.value[idx], idx)
     }
   }
+  guestVoteSessionId.value = guestVoteSessionIdFromSharingParams(sharingParams)
 }
 
 function initFormOnOpen() {
+  resetGuestVoteSession.value = false
   const sp = parseSharingParams(eventStore.selectedEvent?.sharingParams)
   if (sp && broadcastModeFromSharingParams(sp) === 'voting') {
     loadTextFieldsFromSharingParams(sp)
   } else {
     resetTextFieldsFromDefaults()
+    guestVoteSessionId.value = ''
   }
 }
 
@@ -279,8 +285,15 @@ function onActivate() {
   try {
     const pl = selectedPlaylist.value
     if (!pl) return
+    const playlistName = playlistDisplayName(pl)
+    const existingSessionId = String(guestVoteSessionId.value ?? '').trim()
+    const nextGuestVoteSessionId = resetGuestVoteSession.value
+      ? String(Date.now())
+      : existingSessionId || playlistName
+
     const sharingParams = buildVotingSharingParams({
-      playlistName: playlistDisplayName(pl),
+      playlistName,
+      guestVoteSessionId: nextGuestVoteSessionId,
       maxSelections: maxSelections.value,
       title: voteTitle.value,
       body: voteBody.value,
@@ -367,7 +380,21 @@ function onActivate() {
                   hide-details="auto"
                   rows="3"
                   auto-grow
+                  class="mb-2"
                 />
+                <div class="activate-voting-dialog__vote-again mt-1">
+                  <v-checkbox
+                    v-model="resetGuestVoteSession"
+                    color="warning"
+                    hide-details
+                    density="comfortable"
+                    label="אפשר לאורחים שהצביעו להצביע שוב"
+                  />
+                  <p class="text-caption text-medium-emphasis ms-8 mt-n2 mb-0">
+                    מזהה סבב הצבעה חדש בדפדפן האורח — יש ללחוץ «הפעל» כדי שהשינוי יגיע לאורחים.
+                    תוצאות ההצבעה הקודמות נשמרות במערכת.
+                  </p>
+                </div>
               </v-col>
               <v-col cols="12" md="6">
                 <div class="text-caption text-medium-emphasis mb-2">תצוגה מקדימה</div>
@@ -580,6 +607,13 @@ function onActivate() {
   border-radius: 12px;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: rgba(var(--v-theme-surface-variant), 0.25);
+}
+
+.activate-voting-dialog__vote-again {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-warning), 0.35);
+  background: rgba(var(--v-theme-warning), 0.08);
 }
 
 .activate-voting-dialog__step-row {

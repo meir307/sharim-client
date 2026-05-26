@@ -5,13 +5,47 @@ import {
 
 /**
  * @param {string} eventId
- * @param {string} playlistName
+ * @param {string} sessionId — `guestVoteSessionId` or legacy playlist name
  */
-export function guestVoteStorageKey(eventId, playlistName) {
+export function guestVoteStorageKey(eventId, sessionId) {
   const eid = String(eventId ?? '').trim()
-  const name = String(playlistName ?? '').trim()
-  if (!eid || !name) return ''
-  return `sharim.guestVoted.${eid}.${encodeURIComponent(name)}`
+  const sid = String(sessionId ?? '').trim()
+  if (!eid || !sid) return ''
+  return `sharim.guestVoted.${eid}.${encodeURIComponent(sid)}`
+}
+
+/**
+ * @param {string} eventId
+ */
+export function guestVoteLastSessionMetaKey(eventId) {
+  const eid = String(eventId ?? '').trim()
+  if (!eid) return ''
+  return `sharim.guestVotedLastSession.${eid}`
+}
+
+/**
+ * When `guestVoteSessionId` changes (host allowed vote again), remove the previous vote mark.
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ */
+export function syncGuestVoteSessionFromSharingParams(sharingParams) {
+  if (typeof window === 'undefined') return
+  const { eventId, sessionId } = votingSessionFromSharingParams(sharingParams)
+  if (!eventId || !sessionId) return
+
+  const metaKey = guestVoteLastSessionMetaKey(eventId)
+  if (!metaKey) return
+
+  const prev = String(window.localStorage.getItem(metaKey) ?? '').trim()
+  const current = sessionId
+
+  if (prev && prev !== current) {
+    const oldVoteKey = guestVoteStorageKey(eventId, prev)
+    if (oldVoteKey) window.localStorage.removeItem(oldVoteKey)
+  }
+
+  if (prev !== current) {
+    window.localStorage.setItem(metaKey, current)
+  }
 }
 
 /**
@@ -30,8 +64,8 @@ export function guestFeedbackStorageKey(eventId, title) {
  */
 export function hasGuestVotedForSharingParams(sharingParams) {
   if (typeof window === 'undefined') return false
-  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
-  const key = guestVoteStorageKey(eventId, playlistName)
+  const { eventId, sessionId } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, sessionId)
   if (!key) return false
   return window.localStorage.getItem(key) === '1'
 }
@@ -41,8 +75,8 @@ export function hasGuestVotedForSharingParams(sharingParams) {
  */
 export function markGuestVotedForSharingParams(sharingParams) {
   if (typeof window === 'undefined') return
-  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
-  const key = guestVoteStorageKey(eventId, playlistName)
+  const { eventId, sessionId } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, sessionId)
   if (!key) return
   window.localStorage.setItem(key, '1')
 }
@@ -50,8 +84,8 @@ export function markGuestVotedForSharingParams(sharingParams) {
 /** @param {Record<string, unknown> | null | undefined} sharingParams */
 export function clearGuestVotedForSharingParams(sharingParams) {
   if (typeof window === 'undefined') return
-  const { eventId, playlistName } = votingSessionFromSharingParams(sharingParams)
-  const key = guestVoteStorageKey(eventId, playlistName)
+  const { eventId, sessionId } = votingSessionFromSharingParams(sharingParams)
+  const key = guestVoteStorageKey(eventId, sessionId)
   if (!key) return
   window.localStorage.removeItem(key)
 }

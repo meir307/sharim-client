@@ -8,7 +8,8 @@ import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable
  * - `broadcastMode`, `eventName` (set by server on activate), `secondsToSleep` (poll interval)
  * - `activeLink` (lyrics mode) — current song doc URL for guests
  * - `eventId` (voting / feedback) — set by host on activate
- * - `playlistName` (voting) — session key + guest label; one vote per event + playlist (localStorage)
+ * - `playlistName` (voting) — guest label; display / server session name
+ * - `guestVoteSessionId` (voting) — guest localStorage vote key; new id when host allows vote again
  * - `title` (feedback) — session key + guest intro headline; one submit per event + title (localStorage)
  * - Voting guest copy (`welcomeTitle`, `title`, buttons, etc.) — set by host on activate via `buildVotingSharingParams`
  * - plus mode-specific fields from the activation builders below.
@@ -131,15 +132,31 @@ export function eventIdFromSharingParams(sharingParams) {
 }
 
 /**
- * Voting session identity for guest localStorage (one vote per event + playlist name).
+ * Guest vote localStorage session id (falls back to `playlistName` for legacy broadcasts).
  * @param {Record<string, unknown> | null | undefined} sharingParams
- * @returns {{ eventId: string, playlistName: string }}
+ * @returns {string}
+ */
+export function guestVoteSessionIdFromSharingParams(sharingParams) {
+  const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  const playlistName = sp ? String(sp.playlistName ?? sp.PlaylistName ?? '').trim() : ''
+  const explicit = sp
+    ? String(sp.guestVoteSessionId ?? sp.GuestVoteSessionId ?? '').trim()
+    : ''
+  return explicit || playlistName
+}
+
+/**
+ * Voting session identity for guest localStorage (one vote per event + session id).
+ * @param {Record<string, unknown> | null | undefined} sharingParams
+ * @returns {{ eventId: string, playlistName: string, sessionId: string }}
  */
 export function votingSessionFromSharingParams(sharingParams) {
   const sp = sharingParams && typeof sharingParams === 'object' ? sharingParams : null
+  const playlistName = sp ? String(sp.playlistName ?? sp.PlaylistName ?? '').trim() : ''
   return {
     eventId: eventIdFromSharingParams(sp),
-    playlistName: sp ? String(sp.playlistName ?? sp.PlaylistName ?? '').trim() : '',
+    playlistName,
+    sessionId: guestVoteSessionIdFromSharingParams(sp),
   }
 }
 
@@ -329,10 +346,13 @@ export function buildVotingSharingParams(input) {
     throw new Error('אין שירים בפלייליסט שנבחר')
   }
 
+  const guestVoteSessionId = String(input?.guestVoteSessionId ?? '').trim() || playlistName
+
   return withGuestPollDefaults(
     {
       broadcastMode: 'voting',
       playlistName,
+      guestVoteSessionId,
       maxSelections,
       playlist,
       ...guestCopy,

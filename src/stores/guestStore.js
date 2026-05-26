@@ -57,6 +57,8 @@ export const useGuestStore = defineStore('GuestStore', {
     /** Set when a silent poll detects a new broadcastMode (for snackbar). */
     broadcastModeJustChanged: false,
     _sharingParamsFingerprint: '',
+    /** Incremented on every successful guest poll (even if params unchanged). */
+    sharingPollTick: 0,
     _pollSecondsToSleep: null,
     /** While > 0, `FetchGuestEvent` interval is stopped (guest voting / feedback in progress). */
     broadcastPollPauseCount: 0,
@@ -164,6 +166,7 @@ export const useGuestStore = defineStore('GuestStore', {
         const prevSeconds = this._pollSecondsToSleep
         const nextSeconds = secondsToSleepFromSharingParams(parsed)
         const updated = this.applySharingParams(parsed)
+        this.sharingPollTick += 1
 
         if (updated && prevSeconds != null && prevSeconds !== nextSeconds) {
           this.restartBroadcastPolling()
@@ -356,6 +359,7 @@ export const useGuestStore = defineStore('GuestStore', {
         })
         const sharingParams = sharingParamsFromResponseData(response.data)
         this.applySharingParams(sharingParams)
+        this.sharingPollTick += 1
         this.startBroadcastPolling()
       } catch (err) {
         this.stopBroadcastPolling()
@@ -381,6 +385,7 @@ export const useGuestStore = defineStore('GuestStore', {
       this.broadcastMode = 'landing'
       this.broadcastModeJustChanged = false
       this._sharingParamsFingerprint = ''
+      this.sharingPollTick = 0
     },
   },
 })

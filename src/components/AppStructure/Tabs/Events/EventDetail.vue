@@ -83,12 +83,36 @@ watch(activeSection, (section) => {
   }
 })
 
-function refreshVotingResults() {
-  votingPanelRef.value?.refresh?.()
+async function refreshVotingResults() {
+  await votingPanelRef.value?.refresh?.()
 }
 
-function refreshFeedbackResults() {
-  feedbackPanelRef.value?.refresh?.()
+async function refreshFeedbackResults() {
+  await feedbackPanelRef.value?.refresh?.()
+}
+
+function onVotingLoading(value) {
+  votingLoading.value = Boolean(value)
+}
+
+function onFeedbackLoading(value) {
+  feedbackLoading.value = Boolean(value)
+}
+
+function onSelectedVotingSessionId(value) {
+  selectedVotingSessionId.value = value
+}
+
+function onSelectedFeedbackSessionId(value) {
+  selectedFeedbackSessionId.value = value
+}
+
+function onVotingTotalVotes(value) {
+  votingTotalVotes.value = Number(value) || 0
+}
+
+function onFeedbackTotalParticipate(value) {
+  feedbackTotalParticipate.value = Number(value) || 0
 }
 
 function onVotingPlaylistItems(items) {
@@ -296,41 +320,26 @@ function onEdit() {
           </v-card-title>
 
           <v-card-text class="pa-0">
-            <component
-              :is="activeNavItem.component"
-              :ref="
-                activeSection === 'voting'
-                  ? votingPanelRef
-                  : activeSection === 'feedback'
-                    ? feedbackPanelRef
-                    : undefined
-              "
+            <EventDetailControl v-if="activeSection === 'control'" :event="event" />
+            <EventDetailVoting
+              v-else-if="activeSection === 'voting'"
+              ref="votingPanelRef"
               :event="event"
-              :selected-session-id="
-                activeSection === 'voting'
-                  ? selectedVotingSessionId
-                  : activeSection === 'feedback'
-                    ? selectedFeedbackSessionId
-                    : undefined
-              "
-              @update:selected-session-id="
-                activeSection === 'voting'
-                  ? (selectedVotingSessionId = $event)
-                  : activeSection === 'feedback'
-                    ? (selectedFeedbackSessionId = $event)
-                    : undefined
-              "
+              :selected-session-id="selectedVotingSessionId"
+              @update:selected-session-id="onSelectedVotingSessionId"
               @update:playlist-items="onVotingPlaylistItems"
+              @update:total-votes="onVotingTotalVotes"
+              @update:loading="onVotingLoading"
+            />
+            <EventDetailFeedback
+              v-else-if="activeSection === 'feedback'"
+              ref="feedbackPanelRef"
+              :event="event"
+              :selected-session-id="selectedFeedbackSessionId"
+              @update:selected-session-id="onSelectedFeedbackSessionId"
               @update:feedback-session-items="onFeedbackSessionItems"
-              @update:total-votes="votingTotalVotes = $event"
-              @update:total-participate="feedbackTotalParticipate = $event"
-              @update:loading="
-                activeSection === 'voting'
-                  ? (votingLoading = $event)
-                  : activeSection === 'feedback'
-                    ? (feedbackLoading = $event)
-                    : undefined
-              "
+              @update:total-participate="onFeedbackTotalParticipate"
+              @update:loading="onFeedbackLoading"
             />
           </v-card-text>
         </v-card>

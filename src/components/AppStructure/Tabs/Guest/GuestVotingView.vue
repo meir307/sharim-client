@@ -5,6 +5,7 @@ import {
   clearGuestVotedForSharingParams,
   hasGuestVotedForSharingParams,
   markGuestVotedForSharingParams,
+  syncGuestVoteSessionFromSharingParams,
 } from '@/utils/guestSessionStorage.js'
 import { SHOW_GUEST_SESSION_TEST_CONTROLS } from '@/utils/guestDevFlags.js'
 import {
@@ -155,6 +156,7 @@ function clearVoteSessionForTesting() {
 }
 
 function applyVoteSessionState() {
+  syncGuestVoteSessionFromSharingParams(props.sharingParams)
   initSongs()
   declined.value = false
   if (hasGuestVotedForSharingParams(props.sharingParams)) {
@@ -169,7 +171,9 @@ watch(
   () => [
     votingSession.value.eventId,
     votingSession.value.playlistName,
+    votingSession.value.sessionId,
     props.sharingParams?.playlist,
+    guestStore.sharingPollTick,
   ],
   applyVoteSessionState,
   { immediate: true, deep: false },
