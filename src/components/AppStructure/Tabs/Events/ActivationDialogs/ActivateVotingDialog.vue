@@ -29,6 +29,7 @@ const selectedPlaylistKey = ref(null)
 const maxSelections = ref(7)
 const guestStepTab = ref('welcome')
 const resetGuestVoteSession = ref(false)
+const clearVotingResults = ref(false)
 const guestVoteSessionId = ref('')
 
 const welcomeTitle = ref('')
@@ -114,6 +115,7 @@ function loadTextFieldsFromSharingParams(sharingParams) {
 
 function initFormOnOpen() {
   resetGuestVoteSession.value = false
+  clearVotingResults.value = false
   const sp = parseSharingParams(eventStore.selectedEvent?.sharingParams)
   if (sp && broadcastModeFromSharingParams(sp) === 'voting') {
     loadTextFieldsFromSharingParams(sp)
@@ -313,6 +315,7 @@ function onActivate() {
       declinedBody: declinedBody.value,
       declinedBackButton: declinedBackButton.value,
       playlist: votingPlaylistForSharing(),
+      clearVotingResults: clearVotingResults.value,
     })
     emit('activate', sharingParams)
     close()
@@ -382,7 +385,7 @@ function onActivate() {
                   auto-grow
                   class="mb-2"
                 />
-                <div class="activate-voting-dialog__vote-again mt-1">
+                <div class="activate-voting-dialog__vote-again mt-1" dir="rtl">
                   <v-checkbox
                     v-model="resetGuestVoteSession"
                     color="warning"
@@ -390,10 +393,13 @@ function onActivate() {
                     density="comfortable"
                     label="אפשר לאורחים שהצביעו להצביע שוב"
                   />
-                  <p class="text-caption text-medium-emphasis ms-8 mt-n2 mb-0">
-                    מזהה סבב הצבעה חדש בדפדפן האורח — יש ללחוץ «הפעל» כדי שהשינוי יגיע לאורחים.
-                    תוצאות ההצבעה הקודמות נשמרות במערכת.
-                  </p>
+                  <v-checkbox
+                    v-model="clearVotingResults"
+                    color="error"
+                    hide-details
+                    density="comfortable"
+                    label="מחק תוצאות הצבעה"
+                  />
                 </div>
               </v-col>
               <v-col cols="12" md="6">
@@ -614,6 +620,27 @@ function onActivate() {
   border-radius: 12px;
   border: 1px solid rgba(var(--v-theme-warning), 0.35);
   background: rgba(var(--v-theme-warning), 0.08);
+  direction: rtl;
+  text-align: right;
+}
+
+.activate-voting-dialog__vote-again :deep(.v-input) {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.activate-voting-dialog__vote-again :deep(.v-selection-control) {
+  flex-direction: row;
+  justify-content: flex-start;
+  width: auto;
+  max-width: 100%;
+}
+
+.activate-voting-dialog__vote-again :deep(.v-label) {
+  text-align: right;
+  white-space: normal;
 }
 
 .activate-voting-dialog__step-row {

@@ -10,6 +10,7 @@ import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable
  * - `eventId` (voting / feedback) — set by host on activate
  * - `playlistName` (voting) — guest label; display / server session name
  * - `guestVoteSessionId` (voting) — guest localStorage vote key; new id when host allows vote again
+ * - `clearVotingResults` (voting, host-only) — stripped before guest poll; deletes/reseeds DB session on activate
  * - `title` (feedback) — session key + guest intro headline; one submit per event + title (localStorage)
  * - Voting guest copy (`welcomeTitle`, `title`, buttons, etc.) — set by host on activate via `buildVotingSharingParams`
  * - plus mode-specific fields from the activation builders below.
@@ -348,17 +349,20 @@ export function buildVotingSharingParams(input) {
 
   const guestVoteSessionId = String(input?.guestVoteSessionId ?? '').trim() || playlistName
 
-  return withGuestPollDefaults(
-    {
-      broadcastMode: 'voting',
-      playlistName,
-      guestVoteSessionId,
-      maxSelections,
-      playlist,
-      ...guestCopy,
-    },
-    input,
-  )
+  const params = {
+    broadcastMode: 'voting',
+    playlistName,
+    guestVoteSessionId,
+    maxSelections,
+    playlist,
+    ...guestCopy,
+  }
+
+  if (input?.clearVotingResults === true) {
+    params.clearVotingResults = true
+  }
+
+  return withGuestPollDefaults(params, input)
 }
 
 /**
