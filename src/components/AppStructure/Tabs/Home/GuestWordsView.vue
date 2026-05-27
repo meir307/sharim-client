@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSharingStore } from '@/stores/SharingStore'
+import GoogleDocLinkPane from '@/components/AppStructure/Tabs/Songs/GoogleDocLinkPane.vue'
 
 const router = useRouter()
 const sharingStore = useSharingStore()
@@ -25,205 +26,13 @@ function absolutizeLink(link) {
 
 const guestLyricsHref = computed(() => absolutizeLink(sharingStore.guestLyricsLink))
 
-/** Guest lyrics iframe only: map Google Docs URLs to embed-friendly paths (not used elsewhere in AppStructure). */
-const GOOGLE_DOCS_EMBED = [
-  [/\/document\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/document/d/${id}/preview`],
-  [/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/spreadsheets/d/${id}/htmlview`],
-  [/\/presentation\/d\/([a-zA-Z0-9_-]+)/, (id) => `https://docs.google.com/presentation/d/${id}/embed`],
-]
-
-function guestIframeSrcFromUrl(url) {
-  const s = String(url ?? '').trim()
-  if (!s) return ''
-  try {
-    const u = new URL(s)
-    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
-    if (host !== 'docs.google.com') return s
-    for (const [re, toUrl] of GOOGLE_DOCS_EMBED) {
-      const m = u.pathname.match(re)
-      if (m) return toUrl(m[1])
-    }
-    return s
-  } catch {
-    return s
-  }
-}
-
-const guestLyricsIframeSrc = computed(() => guestIframeSrcFromUrl(guestLyricsHref.value))
-
 /** Real lyrics URL from server — hide placeholder until a valid link arrives. */
 const showLyricsFrame = computed(() => {
   const s = String(sharingStore.guestLyricsLink ?? '').trim()
   return Boolean(s) && s !== 'xxxxx'
 })
 
-/** Avoid recursive iframe (our guest page embedding itself repeatedly). */
-const canEmbedLyricsFrame = computed(() => {
-  const src = String(guestLyricsIframeSrc.value ?? '').trim()
-  if (!src) return false
-  try {
-    const u = new URL(src, window.location.origin)
-    const sameOrigin = u.origin === window.location.origin
-    if (!sameOrigin) return true
-    return !u.pathname.includes('/guest/')
-  } catch {
-    return true
-  }
-})
-
-/** Standard Google Doc file id from `/document/d/{id}/…` (not `/d/e/` publish ids). */
-function googleDocsDocumentIdFromUrl(url) {
-  const s = String(url ?? '').trim()
-  if (!s) return null
-  try {
-    const u = new URL(s)
-    const host = u.hostname.replace(/^www\./i, '').toLowerCase()
-    if (host !== 'docs.google.com') return null
-    const m = u.pathname.match(/\/document\/d\/([a-zA-Z0-9_-]+)/)
-    return m ? m[1] : null
-  } catch {
-    return null
-  }
-}
-
-const remotePlainText = ref('')
-const remoteDocHtml = ref('')
-const remotePlainLoading = ref(false)
-let remotePlainAbort = null
-
-const linkPanePlainText = computed(() => String(remotePlainText.value ?? '').trim())
-const linkPaneHtml = computed(() => String(remoteDocHtml.value ?? '').trim())
-
-function looksLikeGoogleLoginOrBlockedHtml(html) {
-  const h = String(html ?? '').slice(0, 12000).toLowerCase()
-  if (h.includes('accounts.google.com')) return true
-  if (h.includes('sign in</title>') || h.includes('sign_in')) return true
-  if (h.includes('access denied') && h.includes('google')) return true
-  return false
-}
-
-/**
- * Same as DisplaySong: fragment for `v-html` from Google HTML export — strip scripts/iframes, inline handlers.
- */
-function buildGoogleDocDisplayHtml(rawHtml) {
-  if (!rawHtml || typeof rawHtml !== 'string') return ''
-  if (looksLikeGoogleLoginOrBlockedHtml(rawHtml)) return ''
-
-  let doc
-  try {
-    doc = new DOMParser().parseFromString(rawHtml, 'text/html')
-  } catch {
-    return ''
-  }
-
-  doc.querySelectorAll('script').forEach((el) => el.remove())
-  doc.querySelectorAll('iframe, object, embed').forEach((el) => el.remove())
-  doc.querySelectorAll('*').forEach((el) => {
-    for (const attr of Array.from(el.attributes)) {
-      const n = attr.name.toLowerCase()
-      if (n.startsWith('on')) el.removeAttribute(attr.name)
-    }
-    if (el.tagName === 'A') {
-      const href = el.getAttribute('href')
-      if (href != null && /^\s*javascript:/i.test(href)) el.removeAttribute('href')
-    }
-  })
-
-  const headBits = [...doc.head.querySelectorAll('link[rel="stylesheet"], style')]
-    .map((el) => el.outerHTML)
-    .join('')
-
-  const bodyHtml = doc.body?.innerHTML?.trim() ?? ''
-  if (!bodyHtml) return ''
-  return headBits + bodyHtml
-}
-
-async function tryLoadGoogleDocRemoteContent() {
-  remotePlainAbort?.abort()
-  remotePlainText.value = ''
-  remoteDocHtml.value = ''
-  remotePlainLoading.value = false
-
-  if (!isTopWindow || !showLyricsFrame.value) {
-    remotePlainAbort = null
-    return
-  }
-
-  const id = googleDocsDocumentIdFromUrl(guestLyricsHref.value)
-  if (!id) {
-    remotePlainAbort = null
-    return
-  }
-
-  const ac = new AbortController()
-  remotePlainAbort = ac
-  remotePlainLoading.value = true
-
-  const base = `https://docs.google.com/document/d/${encodeURIComponent(id)}`
-  const htmlUrl = `${base}/export?format=html`
-  const txtUrl = `${base}/export?format=txt`
-
-  try {
-    try {
-      const resH = await fetch(htmlUrl, { credentials: 'omit', mode: 'cors', signal: ac.signal })
-      if (resH.ok) {
-        const raw = await resH.text()
-        const built = buildGoogleDocDisplayHtml(raw)
-        if (built) {
-          remoteDocHtml.value = built
-          return
-        }
-      }
-    } catch (e) {
-      if (e?.name === 'AbortError') throw e
-    }
-
-    if (remotePlainAbort !== ac) return
-
-    const resT = await fetch(txtUrl, { credentials: 'omit', mode: 'cors', signal: ac.signal })
-    if (!resT.ok) throw new Error(String(resT.status))
-    const text = await resT.text()
-    const start = text.trimStart()
-    if (start.startsWith('<!') || start.toLowerCase().startsWith('<html')) throw new Error('html')
-    remotePlainText.value = text
-  } catch (e) {
-    if (e?.name !== 'AbortError') remotePlainText.value = ''
-  } finally {
-    if (remotePlainAbort === ac) {
-      remotePlainLoading.value = false
-      remotePlainAbort = null
-    }
-  }
-}
-
-watch(
-  () => [guestLyricsHref.value, showLyricsFrame.value, isTopWindow],
-  () => {
-    void tryLoadGoogleDocRemoteContent()
-  },
-  { immediate: true },
-)
-
-const showPlainTextLoading = computed(
-  () =>
-    remotePlainLoading.value &&
-    Boolean(googleDocsDocumentIdFromUrl(guestLyricsHref.value)) &&
-    isTopWindow &&
-    showLyricsFrame.value,
-)
-
-const showLinkIframe = computed(
-  () =>
-    isTopWindow &&
-    showLyricsFrame.value &&
-    canEmbedLyricsFrame.value &&
-    Boolean(String(guestLyricsIframeSrc.value ?? '').trim()) &&
-    !linkPaneHtml.value &&
-    !linkPanePlainText.value &&
-    !remotePlainLoading.value,
-)
-
-/** Full-screen lyrics area (HTML / plain / iframe / loading / fallback). */
+/** Full-screen lyrics area (HTML / plain / iframe / loading). */
 const showGuestLyricsPane = computed(() => isTopWindow && showLyricsFrame.value)
 
 /** Waiting / success UI when not in full-screen lyrics mode. */
@@ -245,45 +54,17 @@ onUnmounted(() => {
     clearInterval(lyricsPollTimer)
     lyricsPollTimer = null
   }
-  remotePlainAbort?.abort()
 })
 </script>
 
 <template>
   <div class="guest-words" :class="{ 'guest-words--lyrics': showGuestLyricsPane }">
     <div v-if="showGuestLyricsPane" class="guest-words__lyrics-pane">
-      <div v-if="showPlainTextLoading" class="guest-words__link-body-loading">
-        <v-progress-circular indeterminate color="primary" size="48" width="4" />
-      </div>
-      <div
-        v-else-if="linkPaneHtml"
-        class="guest-words__link-html-doc"
-        dir="rtl"
-        lang="he"
-        v-html="linkPaneHtml"
-      />
-      <pre v-else-if="linkPanePlainText" class="guest-words__link-plain-pre" dir="rtl" lang="he">{{
-        linkPanePlainText
-      }}</pre>
-      <iframe
-        v-else-if="showLinkIframe"
-        class="guest-words__iframe-full guest-words__iframe-full--dark"
-        :src="guestLyricsIframeSrc"
+      <GoogleDocLinkPane
+        fill-height
+        :link-url="guestLyricsHref"
         title="מילות השיר"
-        referrerpolicy="no-referrer-when-downgrade"
       />
-      <div v-else class="guest-words__lyrics-fallback pa-6 text-center">
-        <p class="text-body-1 text-medium-emphasis mb-4">
-          לא ניתן להציג את המילים כאן. פתחו את הקישור בדפדפן.
-        </p>
-        <a
-          class="guest-words__fallback-link text-body-1 font-weight-medium"
-          :href="guestLyricsHref"
-          target="_blank"
-          rel="noopener noreferrer"
-          dir="ltr"
-        >{{ guestLyricsHref }}</a>
-      </div>
     </div>
 
     <div v-else-if="showGuestWaitingInner" class="guest-words__inner">
@@ -342,10 +123,12 @@ onUnmounted(() => {
 
 .guest-words--lyrics {
   padding: 0;
-  min-height: 100dvh;
   height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
   width: 100%;
   max-width: 100%;
+  overflow: hidden;
   justify-content: stretch;
   align-items: stretch;
 }
@@ -355,144 +138,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  width: 100%;
-  background: #111;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  direction: rtl;
-}
-
-.guest-words__link-body-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 auto;
-  min-height: 240px;
-  padding: 24px;
-  box-sizing: border-box;
-  background: #111;
-}
-
-.guest-words__link-plain-pre {
-  margin: 12px 16px 16px;
-  padding: 12px 16px;
-  flex: 1 1 auto;
-  min-height: 0;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  font-size: 21px !important;
-  line-height: 1.45;
-  direction: rtl;
-  text-align: right;
-  unicode-bidi: plaintext;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  color: #e6e6e6;
-  background-color: #1b1b1b;
-}
-
-.guest-words__link-html-doc {
-  margin: 12px 16px 16px;
-  padding: 20px 24px 28px;
-  flex: 1 1 auto;
-  min-height: 0;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  background-color: #1b1b1b;
-  color: #e6e6e6;
-  text-align: right !important;
-  direction: rtl;
-  unicode-bidi: plaintext;
-  overflow-wrap: break-word;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-.guest-words__link-html-doc :deep(p),
-.guest-words__link-html-doc :deep(span),
-.guest-words__link-html-doc :deep(li),
-.guest-words__link-html-doc :deep(h1),
-.guest-words__link-html-doc :deep(h2),
-.guest-words__link-html-doc :deep(h3),
-.guest-words__link-html-doc :deep(h4),
-.guest-words__link-html-doc :deep(h5),
-.guest-words__link-html-doc :deep(h6),
-.guest-words__link-html-doc :deep(td),
-.guest-words__link-html-doc :deep(th),
-.guest-words__link-html-doc :deep(div) {
-  text-align: right !important;
-  direction: rtl;
-  color: #e6e6e6 !important;
-  background-color: transparent !important;
-}
-
-.guest-words__link-html-doc :deep(a) {
-  color: #90caf9 !important;
-}
-
-.guest-words__link-html-doc :deep(hr) {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-.guest-words__link-html-doc :deep(ul),
-.guest-words__link-html-doc :deep(ol) {
-  padding-inline-start: 0;
-  padding-inline-end: 24px;
-  margin: 0.5em 0;
-}
-
-.guest-words__link-html-doc :deep(img) {
-  max-width: 100%;
-  height: auto;
-}
-
-.guest-words__link-html-doc :deep(table) {
-  max-width: 100%;
-  border-collapse: collapse;
-  margin-inline-start: auto;
-  margin-inline-end: 0;
-  color: #e6e6e6 !important;
-}
-
-.guest-words__link-html-doc :deep(table),
-.guest-words__link-html-doc :deep(td),
-.guest-words__link-html-doc :deep(th) {
-  border-color: rgba(255, 255, 255, 0.16) !important;
-}
-
-.guest-words__lyrics-fallback {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #e6e6e6;
-  background: #111;
-}
-
-.guest-words__fallback-link {
-  color: #90caf9;
-  word-break: break-all;
-}
-
-.guest-words__iframe-full {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 100%;
   height: 100%;
-  min-height: 0;
-  border: 0;
-  display: block;
-}
-
-.guest-words__iframe-full--dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.95);
-  background: #111;
+  width: 100%;
+  overflow: hidden;
 }
 
 .guest-words__inner {

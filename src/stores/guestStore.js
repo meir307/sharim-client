@@ -60,6 +60,8 @@ export const useGuestStore = defineStore('GuestStore', {
     /** Incremented on every successful guest poll (even if params unchanged). */
     sharingPollTick: 0,
     _pollSecondsToSleep: null,
+    /** When set, overrides `sharingParams.secondsToSleep` for guest poll interval. */
+    broadcastPollIntervalOverride: null,
     /** While > 0, `FetchGuestEvent` interval is stopped (guest voting / feedback in progress). */
     broadcastPollPauseCount: 0,
   }),
@@ -101,6 +103,26 @@ export const useGuestStore = defineStore('GuestStore', {
       this.broadcastModeJustChanged = false
     },
 
+    /** @returns {number} */
+    broadcastPollIntervalSeconds() {
+      if (this.broadcastPollIntervalOverride != null) {
+        return this.broadcastPollIntervalOverride
+      }
+      return secondsToSleepFromSharingParams(this.sharingParams)
+    },
+
+    /**
+     * @param {number | null} seconds — `null` clears override (use sharingParams again).
+     */
+    setBroadcastPollIntervalOverride(seconds) {
+      const next =
+        seconds == null ? null : secondsToSleepFromSharingParams({ secondsToSleep: seconds })
+      this.broadcastPollIntervalOverride = next
+      if (this.broadcastPollPauseCount === 0 && this.sharingParams) {
+        this.restartBroadcastPolling()
+      }
+    },
+
     stopBroadcastPolling() {
       if (broadcastPollTimerId != null) {
         clearInterval(broadcastPollTimerId)
@@ -139,7 +161,7 @@ export const useGuestStore = defineStore('GuestStore', {
         return
       }
 
-      const seconds = secondsToSleepFromSharingParams(this.sharingParams)
+      const seconds = this.broadcastPollIntervalSeconds()
       this._pollSecondsToSleep = seconds
       const intervalMs = seconds * 1000
 
@@ -164,11 +186,11 @@ export const useGuestStore = defineStore('GuestStore', {
         })
         const parsed = sharingParamsFromResponseData(response.data)
         const prevSeconds = this._pollSecondsToSleep
-        const nextSeconds = secondsToSleepFromSharingParams(parsed)
         const updated = this.applySharingParams(parsed)
+        const nextSeconds = this.broadcastPollIntervalSeconds()
         this.sharingPollTick += 1
 
-        if (updated && prevSeconds != null && prevSeconds !== nextSeconds) {
+        if (prevSeconds != null && prevSeconds !== nextSeconds) {
           this.restartBroadcastPolling()
         }
 
@@ -377,6 +399,7 @@ export const useGuestStore = defineStore('GuestStore', {
 
     reset() {
       this.broadcastPollPauseCount = 0
+      this.broadcastPollIntervalOverride = null
       this.stopBroadcastPolling()
       this.loading = false
       this.error = ''

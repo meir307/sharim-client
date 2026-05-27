@@ -139,6 +139,7 @@ watch(() => [route.query.ev, route.params.shareCode], load)
 .guest-event--lyrics {
   align-items: stretch;
   padding: 0;
+  height: 100dvh;
   min-height: 100dvh;
   background: rgb(var(--v-theme-surface));
 }
@@ -148,9 +149,18 @@ watch(() => [route.query.ev, route.params.shareCode], load)
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
   margin: 0;
   padding: 0;
+}
+
+.guest-event--lyrics .guest-event__mode {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
 }
 
 .guest-event--voting-ballot {

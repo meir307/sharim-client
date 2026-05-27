@@ -16,6 +16,9 @@ import {
 
 const guestStore = useGuestStore()
 
+/** Thank-you screen: poll every 5s (ignore voting `sharingParams.secondsToSleep`). */
+const THANK_YOU_POLL_SECONDS = 5
+
 const props = defineProps({
   sharingParams: { type: Object, required: true },
   sharingCode: { type: String, default: '' },
@@ -155,6 +158,15 @@ function clearVoteSessionForTesting() {
   initSongs()
 }
 
+function applyThankYouPollInterval() {
+  guestStore.setBroadcastPollIntervalOverride(THANK_YOU_POLL_SECONDS)
+}
+
+async function refreshThankYouBroadcast() {
+  applyThankYouPollInterval()
+  await guestStore.refreshSharingParams({ silent: true })
+}
+
 function applyVoteSessionState() {
   syncGuestVoteSessionFromSharingParams(props.sharingParams)
   initSongs()
@@ -192,12 +204,25 @@ function syncBroadcastPollPause() {
 watch([step, hasVoted], syncBroadcastPollPause, { immediate: true })
 
 watch(
+  hasVoted,
+  (voted) => {
+    if (voted) {
+      applyThankYouPollInterval()
+    } else {
+      guestStore.setBroadcastPollIntervalOverride(null)
+    }
+  },
+  { immediate: true },
+)
+
+watch(
   isBallotStep,
   (active) => emit('ballot-step-active', active),
   { immediate: true },
 )
 
 onUnmounted(() => {
+  guestStore.setBroadcastPollIntervalOverride(null)
   guestStore.resumeBroadcastPolling()
   emit('ballot-step-active', false)
 })
@@ -216,7 +241,16 @@ onUnmounted(() => {
     >
       <v-icon size="56" color="success" class="mb-3">mdi-check-circle-outline</v-icon>
       <h2 class="text-h6 font-weight-bold mb-2">{{ thankYouTitle }}</h2>
-      <p class="text-body-2" :class="{ 'mb-4': SHOW_GUEST_SESSION_TEST_CONTROLS }">{{ thankYouBody }}</p>
+      <p class="text-body-2 mb-4">{{ thankYouBody }}</p>
+      <v-btn
+        color="primary"
+        variant="tonal"
+        prepend-icon="mdi-refresh"
+        class="mb-3"
+        @click="refreshThankYouBroadcast"
+      >
+        בדוק עדכון שידור
+      </v-btn>
       <v-btn
         v-if="SHOW_GUEST_SESSION_TEST_CONTROLS"
         variant="outlined"

@@ -12,6 +12,8 @@ const props = defineProps({
   /** When false, abort fetch and stop auto-scroll (e.g. dialog closed). */
   active: { type: Boolean, default: true },
   autoScroll: { type: Boolean, default: true },
+  /** Fill parent flex column so the scroller overflows and auto-scroll can run. */
+  fillHeight: { type: Boolean, default: false },
 })
 
 const displayLinkUrl = computed(() => String(props.linkUrl ?? '').trim())
@@ -127,20 +129,22 @@ watch(
     linkPanePlainText.value,
     linkPaneHtml.value,
     displayLinkUrl.value,
+    remotePlainLoading.value,
   ],
   async ([isActive]) => {
     stopAutoScroll()
-    if (!isActive) return
+    if (!isActive || !props.autoScroll) return
     const hasPlain = Boolean(String(linkPanePlainText.value ?? '').trim())
     const hasHtml = Boolean(linkPaneHtml.value)
     const hasEmbed =
-      Boolean(embedSrc.value) && Boolean(displayLinkUrl.value)
+      Boolean(embedSrc.value) && Boolean(displayLinkUrl.value) && !remotePlainLoading.value
     if (!hasPlain && !hasHtml && !hasEmbed) return
     await nextTick()
     const sc = linkBodyScrollerRef.value
     if (sc) sc.scrollTop = 0
     startAutoScroll()
   },
+  { immediate: true },
 )
 
 onBeforeUnmount(() => {
@@ -150,7 +154,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="google-doc-link-pane">
+  <div class="google-doc-link-pane" :class="{ 'google-doc-link-pane--fill': fillHeight }">
     <div ref="linkBodyScrollerRef" class="google-doc-link-pane__scroller">
       <div v-if="showPlainTextLoading" class="google-doc-link-pane__loading">
         <v-progress-circular indeterminate color="primary" size="48" width="4" />
@@ -188,6 +192,26 @@ onBeforeUnmount(() => {
   min-height: min(70dvh, 560px);
   margin: 0;
   padding: 0;
+}
+
+.google-doc-link-pane.google-doc-link-pane--fill {
+  min-height: 0;
+}
+
+.google-doc-link-pane--fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.google-doc-link-pane--fill .google-doc-link-pane__scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 0;
 }
 
 .google-doc-link-pane__scroller {

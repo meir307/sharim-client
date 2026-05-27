@@ -178,7 +178,7 @@ export function feedbackSessionFromSharingParams(sharingParams) {
 const DEFAULT_SECONDS_TO_SLEEP = 5
 
 const MIN_SECONDS_TO_SLEEP = 2
-const MAX_SECONDS_TO_SLEEP = 120
+const MAX_SECONDS_TO_SLEEP = 180
 
 /**
  * @param {unknown} value
@@ -324,6 +324,9 @@ function normalizeVotingPlaylistSongs(raw) {
     .filter(Boolean)
 }
 
+/** Guest poll interval while voting broadcast is active (seconds). */
+const VOTING_BROADCAST_SECONDS_TO_SLEEP = 180
+
 /**
  * @param {Record<string, unknown>} input — `playlistName`, `maxSelections`, `playlist`, and all `VOTING_GUEST_COPY_KEYS`
  */
@@ -362,7 +365,10 @@ export function buildVotingSharingParams(input) {
     params.clearVotingResults = true
   }
 
-  return withGuestPollDefaults(params, input)
+  return withGuestPollDefaults(
+    { ...params, secondsToSleep: VOTING_BROADCAST_SECONDS_TO_SLEEP },
+    input,
+  )
 }
 
 /**

@@ -39,7 +39,12 @@ const paneTitle = computed(() => playlistName.value || 'מילות שיר')
     </header>
 
     <div class="guest-lyrics-layout__content">
-      <GoogleDocLinkPane v-if="hasActiveLink" :link-url="activeLink" :title="paneTitle" />
+      <GoogleDocLinkPane
+        v-if="hasActiveLink"
+        fill-height
+        :link-url="activeLink"
+        :title="paneTitle"
+      />
       <div v-else class="guest-lyrics-layout__waiting text-center">
         <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-text-box-outline</v-icon>
         <p class="text-body-2 text-medium-emphasis mb-0">ממתין לשיר מהמנחה…</p>
@@ -54,6 +59,7 @@ const paneTitle = computed(() => playlistName.value || 'מילות שיר')
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -80,14 +86,16 @@ const paneTitle = computed(() => playlistName.value || 'מילות שיר')
 
 .guest-lyrics-layout__event-name {
   margin: 0;
-  padding: 0;
-  padding-right: 10px;
+  padding: 6px 12px;
+  padding-right: 12px;
   min-width: 0;
   font-size: 1.5rem;
   line-height: 1.35;
-  color: #fff;
+  color: #a5d6a7;
+  background-color: #0d2810;
+  border-radius: 8px;
   text-align: right;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 .guest-lyrics-layout__bar :deep(.v-chip) {
@@ -108,6 +116,9 @@ const paneTitle = computed(() => playlistName.value || 'מילות שיר')
 .guest-lyrics-layout__content {
   flex: 1 1 auto;
   min-height: 0;
+  height: 0;
+  display: flex;
+  flex-direction: column;
   margin: 0;
   padding: 0;
 }
