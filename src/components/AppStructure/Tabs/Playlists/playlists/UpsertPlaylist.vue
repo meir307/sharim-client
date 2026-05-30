@@ -20,40 +20,46 @@
                   :rules="[requiredRule]"
                 />
 
-                <div class="upsert-playlist__list-head text-subtitle-2 text-medium-emphasis mb-1 pt-4">
-                  שירים נבחרים ({{ selectedSongs.length }} שירים)
+                <div class="upsert-playlist__list-head d-flex align-center justify-space-between pt-4 mb-1">
+                  <div
+                    class="upsert-playlist__list-head-title text-subtitle-2 text-medium-emphasis min-w-0"
+                  >
+                    שירים נבחרים ({{ selectedSongs.length }} שירים)
+                  </div>
+                  <div class="upsert-playlist__list-head-actions d-flex ga-1 flex-shrink-0">
+                    <v-btn
+                      icon="mdi-chevron-up"
+                      variant="tonal"
+                      size="small"
+                      density="comfortable"
+                      :disabled="!canMoveSelectedUp"
+                      aria-label="הזז שיר נבחר למעלה"
+                      @click="moveHighlightedUp"
+                    />
+                    <v-btn
+                      icon="mdi-chevron-down"
+                      variant="tonal"
+                      size="small"
+                      density="comfortable"
+                      :disabled="!canMoveSelectedDown"
+                      aria-label="הזז שיר נבחר למטה"
+                      @click="moveHighlightedDown"
+                    />
+                  </div>
                 </div>
-                
+
                 <v-card variant="outlined" class="upsert-playlist__list-card">
                   <v-list v-if="selectedSongs.length" density="compact" class="py-0">
                     <v-list-item
-                      v-for="(song, index) in selectedSongs"
+                      v-for="song in selectedSongs"
                       :key="songKey(song)"
                       :title="selectedSongListTitle(song)"
                       :subtitle="selectedSongListSubtitle(song)"
+                      :active="songKey(song) === highlightedSongKey"
+                      color="primary"
+                      class="upsert-playlist__selected-item"
+                      @click="highlightSong(song)"
                     >
-                      <template #prepend>
-                        <div class="upsert-playlist__reorder">
-                          <v-btn
-                            icon="mdi-chevron-up"
-                            variant="text"
-                            size="x-small"
-                            density="compact"
-                            :disabled="index === 0"
-                            aria-label="הזז למעלה ברשימה"
-                            @click="moveSelectedUp(index)"
-                          />
-                          <v-btn
-                            icon="mdi-chevron-down"
-                            variant="text"
-                            size="x-small"
-                            density="compact"
-                            :disabled="index === selectedSongs.length - 1"
-                            aria-label="הזז למטה ברשימה"
-                            @click="moveSelectedDown(index)"
-                          />
-                        </div>
-                      </template>
                       <template #append>
                         <v-btn
                           icon="mdi-close"
@@ -61,7 +67,7 @@
                           size="small"
                           density="comfortable"
                           aria-label="הסר מהפלייליסט"
-                          @click="removeFromSelected(song)"
+                          @click.stop="removeFromSelected(song)"
                         />
                       </template>
                     </v-list-item>
@@ -174,6 +180,8 @@ const selectedSongs = ref([])
 const songsLoading = ref(false)
 const isSaving = ref(false)
 const catalogSearchText = ref('')
+/** @type {import('vue').Ref<string | null>} */
+const highlightedSongKey = ref(null)
 
 const isUpdateMode = computed(() => {
   const p = props.editPlaylist
@@ -276,25 +284,54 @@ function isSelected(song) {
 function addToSelected(song) {
   if (isSelected(song)) return
   selectedSongs.value = [...selectedSongs.value, song]
+  highlightedSongKey.value = songKey(song)
 }
 
 function removeFromSelected(song) {
   const k = songKey(song)
   selectedSongs.value = selectedSongs.value.filter((x) => songKey(x) !== k)
+  if (highlightedSongKey.value === k) {
+    highlightedSongKey.value = null
+  }
 }
 
-function moveSelectedUp(index) {
-  if (index <= 0) return
+function highlightSong(song) {
+  highlightedSongKey.value = songKey(song)
+}
+
+const highlightedSongIndex = computed(() => {
+  const key = highlightedSongKey.value
+  if (!key) return -1
+  return selectedSongs.value.findIndex((s) => songKey(s) === key)
+})
+
+const canMoveSelectedUp = computed(
+  () => highlightedSongIndex.value > 0,
+)
+
+const canMoveSelectedDown = computed(() => {
+  const i = highlightedSongIndex.value
+  return i >= 0 && i < selectedSongs.value.length - 1
+})
+
+function moveSelectedAt(index, direction) {
+  const target = index + direction
+  if (target < 0 || target >= selectedSongs.value.length) return
   const next = [...selectedSongs.value]
-  ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+  ;[next[index], next[target]] = [next[target], next[index]]
   selectedSongs.value = next
 }
 
-function moveSelectedDown(index) {
-  if (index >= selectedSongs.value.length - 1) return
-  const next = [...selectedSongs.value]
-  ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
-  selectedSongs.value = next
+function moveHighlightedUp() {
+  const i = highlightedSongIndex.value
+  if (i <= 0) return
+  moveSelectedAt(i, -1)
+}
+
+function moveHighlightedDown() {
+  const i = highlightedSongIndex.value
+  if (i < 0 || i >= selectedSongs.value.length - 1) return
+  moveSelectedAt(i, 1)
 }
 
 function playlistNameFromEdit(p) {
@@ -344,6 +381,8 @@ function resetFromProps() {
   playlistName.value = p ? playlistNameFromEdit(p) : ''
   const resolved = songsArrayFromEdit(p)
   selectedSongs.value = resolved.length ? resolved : []
+  highlightedSongKey.value =
+    resolved.length > 0 ? songKey(resolved[0]) : null
 }
 
 watch(
@@ -413,14 +452,11 @@ async function savePlaylist() {
   margin-bottom: 8px;
 }
 
-.upsert-playlist__reorder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-inline-end: 4px;
+.upsert-playlist__list-head-title {
+  text-align: right;
 }
 
-.upsert-playlist__reorder-hint {
-  line-height: 1.35;
+.upsert-playlist__selected-item {
+  cursor: pointer;
 }
 </style>
