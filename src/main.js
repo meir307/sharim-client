@@ -7,6 +7,7 @@ import vuetify from './plugins/vuetify'
 import './assets/Global.css'
 import './assets/tab-shell.css'
 import './assets/tab-shell-nav.css'
+import './assets/docLinkLyrics.css'
 import './utils/axios'
 
 const app = createApp(App)

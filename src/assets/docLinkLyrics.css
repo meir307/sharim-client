@@ -1,0 +1,182 @@
+/* Shared Google Doc / lyrics body styles (DisplaySong + GoogleDocLinkPane). */
+
+.doc-link-text-wrap[dir='rtl'] {
+  text-align: right;
+}
+
+.doc-link-text-wrap[dir='ltr'] {
+  text-align: left;
+}
+
+.doc-link-plain-pre {
+  margin: 0;
+  padding: 12px 16px;
+  min-height: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 21px !important;
+  line-height: 1.45;
+  unicode-bidi: plaintext;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  color: #e6e6e6;
+  background-color: #1b1b1b;
+}
+
+.doc-link-plain-pre[dir='rtl'] {
+  direction: rtl;
+  text-align: right;
+}
+
+.doc-link-plain-pre[dir='ltr'] {
+  direction: ltr;
+  text-align: left;
+}
+
+.doc-link-html-doc {
+  margin: 12px 16px 16px;
+  padding: 20px 24px 28px;
+  min-height: calc(100% - 28px);
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background-color: #1b1b1b;
+  color: #e6e6e6;
+  unicode-bidi: plaintext;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.doc-link-html-doc[dir='rtl'] {
+  direction: rtl;
+  text-align: right;
+}
+
+.doc-link-html-doc[dir='ltr'] {
+  direction: ltr;
+  text-align: left;
+}
+
+.doc-link-html-doc[dir='rtl'] p,
+.doc-link-html-doc[dir='rtl'] span,
+.doc-link-html-doc[dir='rtl'] li,
+.doc-link-html-doc[dir='rtl'] h1,
+.doc-link-html-doc[dir='rtl'] h2,
+.doc-link-html-doc[dir='rtl'] h3,
+.doc-link-html-doc[dir='rtl'] h4,
+.doc-link-html-doc[dir='rtl'] h5,
+.doc-link-html-doc[dir='rtl'] h6,
+.doc-link-html-doc[dir='rtl'] td,
+.doc-link-html-doc[dir='rtl'] th,
+.doc-link-html-doc[dir='rtl'] div {
+  text-align: right !important;
+  direction: rtl;
+  color: #e6e6e6 !important;
+  background-color: transparent !important;
+}
+
+.doc-link-html-doc[dir='ltr'] p,
+.doc-link-html-doc[dir='ltr'] span,
+.doc-link-html-doc[dir='ltr'] li,
+.doc-link-html-doc[dir='ltr'] h1,
+.doc-link-html-doc[dir='ltr'] h2,
+.doc-link-html-doc[dir='ltr'] h3,
+.doc-link-html-doc[dir='ltr'] h4,
+.doc-link-html-doc[dir='ltr'] h5,
+.doc-link-html-doc[dir='ltr'] h6,
+.doc-link-html-doc[dir='ltr'] td,
+.doc-link-html-doc[dir='ltr'] th,
+.doc-link-html-doc[dir='ltr'] div {
+  text-align: left !important;
+  direction: ltr;
+  color: #e6e6e6 !important;
+  background-color: transparent !important;
+}
+
+.doc-link-html-doc a {
+  color: #90caf9 !important;
+}
+
+.doc-link-html-doc hr {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.doc-link-html-doc[dir='rtl'] ul,
+.doc-link-html-doc[dir='rtl'] ol {
+  padding-inline-start: 0;
+  padding-inline-end: 24px;
+  margin: 0.5em 0;
+}
+
+.doc-link-html-doc[dir='ltr'] ul,
+.doc-link-html-doc[dir='ltr'] ol {
+  padding-inline-start: 24px;
+  padding-inline-end: 0;
+  margin: 0.5em 0;
+}
+
+.doc-link-html-doc img {
+  max-width: 100%;
+  height: auto;
+}
+
+.doc-link-html-doc[dir='rtl'] table {
+  max-width: 100%;
+  border-collapse: collapse;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+  color: #e6e6e6 !important;
+}
+
+.doc-link-html-doc[dir='ltr'] table {
+  max-width: 100%;
+  border-collapse: collapse;
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+  color: #e6e6e6 !important;
+}
+
+.doc-link-html-doc table,
+.doc-link-html-doc td,
+.doc-link-html-doc th {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.doc-link-body-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #111;
+}
+
+.doc-link-scroller {
+  container-type: inline-size;
+  container-name: doc-link-scroller;
+}
+
+.doc-link-iframe {
+  display: block;
+  width: 100%;
+  height: min(320vh, 9600px);
+  min-height: min(180vh, 4800px);
+  border: 0;
+}
+
+@container doc-link-scroller (max-width: 540px) {
+  .doc-link-iframe {
+    min-width: 540px;
+  }
+}
+
+.doc-link-iframe--dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.95);
+  background: #111;
+}

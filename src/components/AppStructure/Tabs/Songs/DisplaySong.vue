@@ -5,6 +5,10 @@ import { useSharingStore } from '@/stores/SharingStore'
 import { useEventStore } from '@/stores/eventStore'
 import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
 import DisplaySongPlaylistPicker from '@/components/AppStructure/Tabs/Songs/DisplaySongPlaylistPicker.vue'
+import {
+  useLyricsDisplayDirection,
+  useTextDisplayDirection,
+} from '@/composables/useLyricsDisplayDirection.js'
 
 const open = defineModel({ type: Boolean, default: false })
 
@@ -320,6 +324,15 @@ const linkPanePlainText = computed(() => {
 })
 
 const linkPaneHtml = computed(() => String(remoteDocHtml.value ?? '').trim())
+
+const { lyricsDisplayDir, lyricsDisplayLang } = useLyricsDisplayDirection(
+  linkPanePlainText,
+  linkPaneHtml,
+  displaySongTitle,
+)
+
+const { lyricsDisplayDir: cordsDisplayDir, lyricsDisplayLang: cordsDisplayLang } =
+  useTextDisplayDirection(cordsDisplayText)
 
 function looksLikeGoogleLoginOrBlockedHtml(html) {
   const h = String(html ?? '').slice(0, 12000).toLowerCase()
@@ -656,35 +669,48 @@ function close() {
           אין שירים בפלייליסט זה.
         </div>
         <div v-else class="display-song__body" dir="ltr">
-          <div v-if="showCordsInLayout" class="display-song__cords-wrap" dir="rtl">
-            <pre class="display-song__cords-pre" dir="rtl">{{ cordsDisplayText }}</pre>
+          <div
+            v-if="showCordsInLayout"
+            class="display-song__cords-wrap doc-link-text-wrap"
+            :dir="cordsDisplayDir"
+            :lang="cordsDisplayLang"
+          >
+            <pre
+              class="doc-link-plain-pre"
+              :dir="cordsDisplayDir"
+              :lang="cordsDisplayLang"
+            >{{ cordsDisplayText }}</pre>
           </div>
           <div class="display-song__shell" :class="{ 'display-song__shell--full': !showCordsInLayout }">
-            <div ref="linkBodyScrollerRef" class="display-song__iframe-scroller">
-              <div v-if="showPlainTextLoading" class="display-song__link-body-loading">
+            <div
+              ref="linkBodyScrollerRef"
+              class="display-song__iframe-scroller doc-link-scroller"
+              :dir="lyricsDisplayDir"
+            >
+              <div v-if="showPlainTextLoading" class="doc-link-body-loading">
                 <v-progress-circular indeterminate color="primary" size="48" width="4" />
               </div>
               <div
                 v-else-if="linkPaneHtml"
-                class="display-song__link-html-doc"
-                dir="rtl"
-                lang="he"
+                class="doc-link-html-doc"
+                :dir="lyricsDisplayDir"
+                :lang="lyricsDisplayLang"
                 v-html="linkPaneHtml"
               />
               <pre
                 v-else-if="linkPanePlainText"
-                class="display-song__link-plain-pre"
-                dir="rtl"
-                lang="he"
+                class="doc-link-plain-pre"
+                :dir="lyricsDisplayDir"
+                :lang="lyricsDisplayLang"
               >{{ linkPanePlainText }}</pre>
               <iframe
                 v-else-if="showLinkIframe"
                 :key="`${embedSrc}#${playlistSongIndex}`"
-                class="display-song__iframe display-song__iframe--dark"
+                class="doc-link-iframe doc-link-iframe--dark"
                 :src="embedSrc"
                 :title="displaySongTitle"
-                dir="rtl"
-                lang="he"
+                :dir="lyricsDisplayDir"
+                :lang="lyricsDisplayLang"
                 referrerpolicy="no-referrer-when-downgrade"
               />
             </div>
@@ -872,30 +898,6 @@ function close() {
   padding: 16px;
   border-inline-end: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   background: #111;
-  direction: rtl;
-  text-align: right;
-}
-
-.display-song__cords-pre {
-  margin: 0;
-  padding: 12px 16px;
-  min-height: 100%;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  color: #e6e6e6;
-  background-color: #1b1b1b;
-  /* Fixed size: avoid Vuetify fluid typography / mobile text-size heuristics shrinking lyrics */
-  font-size: 21px !important;
-  line-height: 1.45;
-  direction: rtl;
-  text-align: right;
-  unicode-bidi: plaintext;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
 }
 
 .display-song__shell {
@@ -919,132 +921,6 @@ function close() {
   min-width: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  direction: rtl;
-  container-type: inline-size;
-  container-name: display-song-iframe-scroller;
-  background: #111;
-}
-
-.display-song__link-body-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 240px;
-  padding: 24px;
-  box-sizing: border-box;
-  background: #111;
-}
-
-.display-song__link-plain-pre {
-  margin: 0;
-  padding: 12px 16px;
-  min-height: 100%;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: inherit;
-  font-size: 21px !important;
-  line-height: 1.45;
-  direction: rtl;
-  text-align: right;
-  unicode-bidi: plaintext;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  color: #e6e6e6;
-  background-color: #1b1b1b;
-}
-
-/* Google HTML export: dark canvas (match `.display-song__link-plain-pre`); Google’s CSS may set light colors inline */
-.display-song__link-html-doc {
-  margin: 12px 16px 16px;
-  padding: 20px 24px 28px;
-  min-height: calc(100% - 28px);
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 6px;
-  background-color: #1b1b1b;
-  color: #e6e6e6;
-  text-align: right !important;
-  direction: rtl;
-  unicode-bidi: plaintext;
-  overflow-wrap: break-word;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-/* Export HTML often sets inline alignment / dark text — force RTL + light body copy */
-.display-song__link-html-doc :deep(p),
-.display-song__link-html-doc :deep(span),
-.display-song__link-html-doc :deep(li),
-.display-song__link-html-doc :deep(h1),
-.display-song__link-html-doc :deep(h2),
-.display-song__link-html-doc :deep(h3),
-.display-song__link-html-doc :deep(h4),
-.display-song__link-html-doc :deep(h5),
-.display-song__link-html-doc :deep(h6),
-.display-song__link-html-doc :deep(td),
-.display-song__link-html-doc :deep(th),
-.display-song__link-html-doc :deep(div) {
-  text-align: right !important;
-  direction: rtl;
-  color: #e6e6e6 !important;
-  background-color: transparent !important;
-}
-
-.display-song__link-html-doc :deep(a) {
-  color: #90caf9 !important;
-}
-
-.display-song__link-html-doc :deep(hr) {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-.display-song__link-html-doc :deep(ul),
-.display-song__link-html-doc :deep(ol) {
-  padding-inline-start: 0;
-  padding-inline-end: 24px;
-  margin: 0.5em 0;
-}
-
-.display-song__link-html-doc :deep(img) {
-  max-width: 100%;
-  height: auto;
-}
-
-.display-song__link-html-doc :deep(table) {
-  max-width: 100%;
-  border-collapse: collapse;
-  margin-inline-start: auto;
-  margin-inline-end: 0;
-  color: #e6e6e6 !important;
-}
-
-.display-song__link-html-doc :deep(table),
-.display-song__link-html-doc :deep(td),
-.display-song__link-html-doc :deep(th) {
-  border-color: rgba(255, 255, 255, 0.16) !important;
-}
-
-.display-song__iframe {
-  display: block;
-  width: 100%;
-  height: min(320vh, 9600px);
-  min-height: min(180vh, 4800px);
-  border: 0;
-}
-
-/* Narrow text panel: give Google Docs a minimum layout width so embedded text does not shrink as much (scroll horizontally). */
-@container display-song-iframe-scroller (max-width: 540px) {
-  .display-song__iframe {
-    min-width: 540px;
-  }
-}
-
-.display-song__iframe--dark {
-  /* Best-effort dark mode for iframe-rendered pages. */
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.95);
   background: #111;
 }
 
@@ -1071,7 +947,7 @@ function close() {
     border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   }
 
-  .display-song__iframe {
+  .doc-link-iframe {
     min-height: 360px;
   }
 }
