@@ -4,6 +4,7 @@ import { useUserStore } from '@/stores/UserStore'
 import { useSharingStore } from '@/stores/SharingStore'
 import { useEventStore } from '@/stores/eventStore'
 import { songListUrl } from '@/components/AppStructure/Tabs/Songs/songsMainTable.js'
+import DisplaySongPlaylistPicker from '@/components/AppStructure/Tabs/Songs/DisplaySongPlaylistPicker.vue'
 
 const open = defineModel({ type: Boolean, default: false })
 
@@ -23,6 +24,7 @@ const userStore = useUserStore()
 const sharingStore = useSharingStore()
 const eventStore = useEventStore()
 const playlistSongIndex = ref(0)
+const showPlaylistPicker = ref(false)
 const DISPLAY_SONG_INDEX_KEY = 'displaySongPlaylistIndexSession'
 
 function firstDefinedString(obj, keys) {
@@ -219,8 +221,17 @@ const cordsPanelUserVisible = ref(true)
 const showCordsInLayout = computed(() => showCordsPanel.value && cordsPanelUserVisible.value)
 
 watch(open, (isOpen) => {
-  if (isOpen) cordsPanelUserVisible.value = true
+  if (isOpen) {
+    cordsPanelUserVisible.value = true
+  } else {
+    showPlaylistPicker.value = false
+  }
 })
+
+function onPlaylistSongPicked(index) {
+  const max = Math.max(0, resolvedPlaylistSongs.value.length - 1)
+  playlistSongIndex.value = Math.max(0, Math.min(max, Number(index) || 0))
+}
 
 /** `rm=minimal` trims embed chrome; RTL inside the doc still comes from Google’s viewer (varies by browser). */
 function googleDocumentPreviewUrl(docId) {
@@ -533,7 +544,10 @@ function close() {
         <div
           v-if="showPlaylistHeader"
           class="display-song__head-inner display-song__head-inner--playlist"
-          :class="{ 'display-song__head-inner--cords-toggle': showCordsPanel }"
+          :class="{
+            'display-song__head-inner--cords-toggle': showCordsPanel,
+            'display-song__head-inner--playlist-list': true,
+          }"
         >
           <div class="display-song__head-playlist-row">
             <v-btn
@@ -569,6 +583,14 @@ function close() {
             />
           </div>
           <div class="display-song__head-actions-end">
+            <v-btn
+              variant="text"
+              density="comfortable"
+              icon="mdi-playlist-music"
+              aria-label="רשימת שירים"
+              class="display-song__head-playlist-list-btn"
+              @click="showPlaylistPicker = true"
+            />
             <v-btn
               v-if="showCordsPanel"
               variant="text"
@@ -671,6 +693,15 @@ function close() {
       </v-card-text>
     </v-card>
   </v-dialog>
+
+  <DisplaySongPlaylistPicker
+    v-if="showPlaylistHeader"
+    v-model="showPlaylistPicker"
+    :songs="resolvedPlaylistSongs"
+    :active-index="playlistSongIndex"
+    :playlist-name="displayPlaylistName"
+    @select="onPlaylistSongPicked"
+  />
 </template>
 
 <style scoped>
@@ -739,8 +770,16 @@ function close() {
   padding-inline: 44px;
 }
 
+.display-song__head-inner--playlist-list {
+  padding-inline-end: 88px;
+}
+
 .display-song__head-inner--cords-toggle {
   padding-inline-end: 88px;
+}
+
+.display-song__head-inner--playlist-list.display-song__head-inner--cords-toggle {
+  padding-inline-end: 132px;
 }
 
 .display-song__head-inner--playlist {
